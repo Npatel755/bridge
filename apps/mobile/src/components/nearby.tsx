@@ -39,7 +39,7 @@ export function NearbyDot({ state }: { state: 'on' | 'paused' | 'off' }) {
     return () => loop.stop();
   }, [state, reduce, scale, motion.nearbyBreatheMs]);
   return (
-    <View style={{ width: 20, height: 20, alignItems: 'center', justifyContent: 'center' }} accessibilityElementsHidden importantForAccessibility="no">
+    <View style={{ width: 20, height: 20, alignItems: 'center', justifyContent: 'center' }} aria-hidden>
       {state === 'on' ? <Animated.View style={{ position: 'absolute', width: 16, height: 16, borderRadius: 999, backgroundColor: colors.nearbyWash, transform: [{ scale }] }} /> : null}
       <View style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: state === 'on' ? colors.nearby : state === 'paused' ? colors.inkFaint : 'transparent', borderWidth: state === 'off' ? 1.5 : 0, borderColor: colors.inkSoft }} />
     </View>

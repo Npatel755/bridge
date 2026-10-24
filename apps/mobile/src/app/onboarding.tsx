@@ -39,7 +39,8 @@ export default function Onboarding() {
   }, []);
 
   const set = (k: keyof Profile, v: unknown) => setForm((f) => ({ ...f, [k]: v }));
-  const toggleList = (k: 'collaboration_prefs' | 'networking_prefs' | 'languages', v: string) => { const cur = (form[k] as string[] | undefined) ?? []; set(k, cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]); };
+  const asList = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : typeof v === 'string' && v ? v.split(',').map((s) => s.trim()).filter(Boolean) : []);
+  const toggleList = (k: 'collaboration_prefs' | 'networking_prefs' | 'languages', v: string) => { const cur = asList(form[k]); set(k, cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]); };
   const has = (kind: string, label: string) => tags.some((t) => t.kind === kind && t.tag === normalizeTag(label));
   const toggleTag = (kind: string, label: string) => {
     const tag = normalizeTag(label);
@@ -133,13 +134,13 @@ export default function Onboarding() {
       {step === 4 ? (
         <Card>
           <T variant="label" color="inkSoft">Open to</T>
-          <TagRow>{COLLAB.map((c) => <Tag key={c} label={c} state={form.collaboration_prefs?.includes(c) ? 'selected' : 'stated'} onPress={() => toggleList('collaboration_prefs', c)} />)}</TagRow>
+          <TagRow>{COLLAB.map((c) => <Tag key={c} label={c} state={asList(form.collaboration_prefs).includes(c) ? 'selected' : 'stated'} onPress={() => toggleList('collaboration_prefs', c)} />)}</TagRow>
           <Field label="Working style" value={form.working_style ?? ''} onChangeText={(v) => set('working_style', v)} placeholder="Evenings and weekends, async first…" />
           <Field label="Availability" value={form.availability ?? ''} onChangeText={(v) => set('availability', v)} placeholder="A few hours a week" />
           <Field label="Preferred contact" value={form.contact_method ?? ''} onChangeText={(v) => set('contact_method', v)} placeholder="Email, Signal, LinkedIn message" />
-          <Field label="Languages" value={(form.languages ?? []).join(', ')} onChangeText={(v) => set('languages', v.split(',').map((s) => s.trim()).filter(Boolean))} placeholder="English, Spanish" />
+          <Field label="Languages" value={asList(form.languages).join(', ')} onChangeText={(v) => set('languages', v.split(',').map((s) => s.trim()).filter(Boolean))} placeholder="English, Spanish" />
           <T variant="label" color="inkSoft">Networking</T>
-          <TagRow>{NETWORKING.map((c) => <Tag key={c} label={c} state={form.networking_prefs?.includes(c) ? 'selected' : 'stated'} onPress={() => toggleList('networking_prefs', c)} />)}</TagRow>
+          <TagRow>{NETWORKING.map((c) => <Tag key={c} label={c} state={asList(form.networking_prefs).includes(c) ? 'selected' : 'stated'} onPress={() => toggleList('networking_prefs', c)} />)}</TagRow>
         </Card>
       ) : null}
 

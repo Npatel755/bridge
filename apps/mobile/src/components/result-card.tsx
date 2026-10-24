@@ -20,14 +20,16 @@ export function bestCitation(rec: Recommendation): Citation | undefined {
 
 const isFollower = (rec: Recommendation) => /follow/i.test(rec.howYouKnow);
 
-export function ResultCard({ rec, ask, expanded, stacked, tabOffset, onPress, showNotes = true }: { rec: Recommendation; ask?: string; expanded: boolean; stacked?: boolean; tabOffset?: number; onPress?: () => void; showNotes?: boolean }) {
+export function ResultCard({ rec, ask, expanded, stacked, tabOffset, onPress, showNotes = true, goalTerms = [] }: { rec: Recommendation; ask?: string; expanded: boolean; stacked?: boolean; tabOffset?: number; onPress?: () => void; showNotes?: boolean; goalTerms?: string[] }) {
   const { space } = useTheme();
   const route = routeInfo(rec.route, { follower: isFollower(rec) });
   const cite = bestCitation(rec);
   const stale = cite ? staleness(cite.date) : null;
   const roleText = rec.headline || rec.howYouKnow;
   const collapsedRole = stale && cite ? `${roleText}, info from ${shortDate(cite.date)}` : roleText;
-  const marks = rec.matchedTags.filter((m) => m.exact).map((m) => m.label).slice(0, 3);
+  const quoteText = cite?.excerpt ?? '';
+  const present = (labels: string[]) => labels.filter((l) => quoteText.toLowerCase().includes(l.toLowerCase()));
+  const marks = [...present(rec.matchedTags.map((m) => m.label)), ...present(rec.matchedTags.map((m) => m.tag.replace(/-/g, ' '))), ...present(goalTerms)].slice(0, 3);
   const via = rec.route.path?.hops[1]?.id;
   const openContact = () => router.push({ pathname: '/contact/[id]', params: { id: rec.contactId } });
   return (
@@ -39,7 +41,7 @@ export function ResultCard({ rec, ask, expanded, stacked, tabOffset, onPress, sh
       collapsed={!expanded}
       stacked={stacked}
       tabOffset={tabOffset}
-      onPress={onPress ?? openContact}>
+      onPress={expanded ? onPress : (onPress ?? openContact)}>
       <View style={{ gap: space[4] }}>
         <CardSection>
           {cite ? (
@@ -56,7 +58,7 @@ export function ResultCard({ rec, ask, expanded, stacked, tabOffset, onPress, sh
         </Inset>
         <Row>
           {rec.route.type !== 'none' ? <Button variant="primary" size="sm" title={rec.route.type === 'introduction' ? 'Draft an intro ask' : 'Draft an ask'} onPress={() => router.push({ pathname: '/draft', params: { contactId: rec.contactId, ask: ask ?? rec.suggestedAsk, via: via ?? '', intro: rec.route.type === 'introduction' ? '1' : '' } })} /> : null}
-          {showNotes ? <Button size="sm" title="See all notes" onPress={openContact} /> : null}
+          <Button size="sm" title={showNotes ? 'Open card' : 'Open card'} onPress={openContact} />
         </Row>
       </View>
     </EntryCard>

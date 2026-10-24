@@ -44,12 +44,12 @@ export default function Nearby() {
 
   const prefs = status.data?.prefs;
   const sess = status.data?.session;
-  const active = !!sess && new Date(sess.expires_at).getTime() > now;
+  const active = !!sess && (!sess.expires_at || new Date(sess.expires_at).getTime() > now);
   useEffect(() => { setNearbyOn(active); if (!active) stopCollecting(); }, [active]);
   useEffect(() => { if (sess && !active) stopSession('expired').then(refreshAll).catch(() => {}); }, [sess, active, refreshAll]);
 
   async function savePrefs(patch: Record<string, unknown>) {
-    const { error } = await supabase.from('discovery_prefs').update(patch).eq('owner_id', session?.user.id);
+    const { error } = await supabase.from('discovery_prefs').upsert({ owner_id: session?.user.id, ...patch }, { onConflict: 'owner_id' });
     if (error) setError(error.message); else status.reload();
   }
   async function begin(mode: 'foreground' | 'background') {
@@ -95,10 +95,10 @@ export default function Nearby() {
     } catch (e) { setError(errorMessage(e)); }
   }
 
-  const minsLeft = sess ? Math.max(0, Math.round((new Date(sess.expires_at).getTime() - now) / 60_000)) : 0;
+  const minsLeft = sess?.expires_at ? Math.max(0, Math.round((new Date(sess.expires_at).getTime() - now) / 60_000)) : null;
   const rowState: 'on' | 'paused' | 'off' = cap === 'denied' || cap === 'unsupported' ? 'off' : active ? 'on' : 'paused';
   const rowTitle = rowState === 'on' ? (sess?.mode === 'simulated' ? 'Nearby is on, simulated for demo' : 'Nearby is on') : rowState === 'paused' ? 'Nearby is paused' : 'Location permission is off';
-  const rowDetail = rowState === 'on' ? `${minsLeft} min left, ${prefs?.radius_m ?? 100} m, ${sess?.mode === 'background' ? 'works in background' : sess?.mode === 'simulated' ? 'simulated samples only' : 'foreground only'}` : rowState === 'paused' ? "You're hidden and alerts are off." : cap === 'unsupported' ? 'This device cannot share location.' : 'Bridge needs location while in use to notice people nearby.';
+  const rowDetail = rowState === 'on' ? `${minsLeft === null ? 'No time limit' : `${minsLeft} min left`}, ${prefs?.radius_m ?? 100} m, ${sess?.mode === 'background' ? 'works in background' : sess?.mode === 'simulated' ? 'simulated samples only' : 'foreground only'}` : rowState === 'paused' ? "You're hidden and alerts are off." : cap === 'unsupported' ? 'This device cannot share location.' : 'Bridge needs location while in use to notice people nearby.';
   const live = matches.data ?? [];
   const radius = (prefs?.radius_m ?? 100) as 50 | 100 | 250;
 

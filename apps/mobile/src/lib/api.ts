@@ -36,5 +36,6 @@ export const api = {
 
 export function errorMessage(e: unknown): string {
   if (e instanceof Error) return e.message;
+  if (e && typeof e === 'object' && typeof (e as { message?: unknown }).message === 'string') return (e as { message: string }).message;
   return typeof e === 'string' ? e : 'Something went wrong';
 }

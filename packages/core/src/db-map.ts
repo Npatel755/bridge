@@ -30,7 +30,10 @@ export function toSourceKind(s: string): SourceKind {
 function toStatus(s: string): ClaimStatus {
   return s === 'suggested' || s === 'rejected' ? s : 'confirmed';
 }
+const PERSONAL = new Set(['friend', 'classmate', 'mentor', 'mentee', 'family', 'acquaintance', 'client', 'collaborator', 'met_once']);
 export function toRelationship(s: string): DirectRelationship {
+  if (PERSONAL.has(s)) return 'personal';
+  if (s === 'former_colleague') return 'colleague';
   return (['personal', 'colleague', 'mutual_connection', 'follower', 'following'] as DirectRelationship[]).includes(s as DirectRelationship) ? (s as DirectRelationship) : 'unknown';
 }
 

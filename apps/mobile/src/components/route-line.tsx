@@ -26,7 +26,7 @@ export function RouteGlyph({ kind, width = 28, color }: { kind: RouteKind; width
   const c = color ?? colors[s.color];
   const h = 8, y = h / 2, r = 2.5, mid = width / 2;
   return (
-    <Svg width={width} height={h} accessibilityElementsHidden importantForAccessibility="no">
+    <Svg width={width} height={h} aria-hidden>
       {s.dashed ? (
         <Line x1={1} y1={y} x2={width - 1} y2={y} stroke={c} strokeWidth={1.5} strokeDasharray="3 3" />
       ) : s.hollowMiddle ? (

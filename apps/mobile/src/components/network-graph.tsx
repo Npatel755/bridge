@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Pressable, View } from 'react-native';
+import { Platform, Pressable, View } from 'react-native';
 import Svg, { Circle, G, Line, Text as SvgText } from 'react-native-svg';
 
 import { T } from '@/components/text';
@@ -40,7 +40,7 @@ export function NetworkGraph({ nodes, edges, size = 340, onSelect, meLabel }: { 
         <Circle cx={c} cy={c} r={14} fill={colors.ink} />
         <SvgText x={c} y={c + 4} fontFamily={fonts.ui} fontSize={10} fill={colors.card} textAnchor="middle">{meLabel}</SvgText>
         {layout.map((n) => (
-          <G key={n.id} opacity={n.dim ? 0.3 : 1} onPress={() => onSelect(n.id)}>
+          <G key={n.id} opacity={n.dim ? 0.3 : 1} {...(Platform.OS === 'web' ? {} : { onPress: () => onSelect(n.id) })}>
             <Circle cx={n.x} cy={n.y} r={16} fill={colors.card} stroke={edgeColor(n.route)} strokeWidth={1.5} strokeDasharray={routeStyle[n.route].dashed ? '3 3' : undefined} />
             <SvgText x={n.x} y={n.y + 4} fontFamily={fonts.noteMedium} fontSize={11} fill={colors.ink} textAnchor="middle">{n.name.trim().split(/\s+/).pop()?.[0]?.toUpperCase()}</SvgText>
             <SvgText x={n.x} y={n.y + 28} fontFamily={fonts.ui} fontSize={9} fill={colors.inkSoft} textAnchor="middle">{n.name.split(' ')[0]}</SvgText>

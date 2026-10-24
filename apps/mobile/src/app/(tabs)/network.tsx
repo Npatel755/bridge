@@ -121,7 +121,7 @@ export default function Network() {
                     const tags = (claimsBy.get(c.id) ?? []).filter((t) => t.kind === 'skill' || t.kind === 'interest');
                     const route = contactRoute(c.relationship, c.relationship_status);
                     return (
-                      <EntryCard key={c.id} name={c.name} role={[c.headline, c.company || c.school].filter(Boolean).join(', ')} route={route} collapsed={!open} tabOffset={open ? 0 : Math.min(i, 3) * 44} onPress={() => (open ? router.push({ pathname: '/contact/[id]', params: { id: c.id } }) : setSelected(c.id))}>
+                      <EntryCard key={c.id} name={c.name} role={[c.headline, c.company || c.school].filter(Boolean).join(', ')} route={route} collapsed={!open} tabOffset={open ? 0 : Math.min(i, 3) * 44} onPress={open ? undefined : () => setSelected(c.id)}>
                         <CardSection>
                           <T variant="body" color="inkSoft">{[c.how_met, c.met_at ? `met ${new Date(c.met_at).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}` : null].filter(Boolean).join('. ')}</T>
                           <TagRow>{tags.slice(0, 6).map((t) => <Tag key={t.tag + t.status} label={t.label} state={t.status === 'confirmed' ? 'stated' : 'suggested'} />)}</TagRow>

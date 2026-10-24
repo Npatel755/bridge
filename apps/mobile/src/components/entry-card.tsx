@@ -50,7 +50,7 @@ export function Avatar({ name, letter, tone = 'default', size }: { name: string;
   const { colors, sizes, type } = useTheme();
   const s = size ?? sizes.avatar;
   return (
-    <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ width: s, height: s, borderRadius: s / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: tone === 'nearby' ? colors.nearbyWash : colors.tab }}>
+    <View aria-hidden style={{ width: s, height: s, borderRadius: s / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: tone === 'nearby' ? colors.nearbyWash : colors.tab }}>
       <T style={[type.tabLetter, { color: tone === 'nearby' ? colors.nearbyInk : colors.inkSoft, fontSize: s >= 40 ? 14 : 12 }]}>{letter ?? initials(name)}</T>
     </View>
   );

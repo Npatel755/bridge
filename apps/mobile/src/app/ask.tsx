@@ -19,7 +19,7 @@ export default function Ask() {
 
   async function run(query: string) {
     if (!query.trim()) return;
-    setBusy(true); setError(null); setEditing(false); setSelected(0);
+    setBusy(true); setError(null); setEditing(false); setSelected(0); setResult(null);
     try { const r = await api.ask(query.trim()); setResult(r); } catch (e) { setError(errorMessage(e)); } finally { setBusy(false); }
   }
   useEffect(() => {
@@ -69,7 +69,7 @@ export default function Ask() {
               <View style={{ gap: space[2] }}>
                 {recs.map((rec, i) => (
                   <View key={rec.contactId}>
-                    <ResultCard rec={rec} ask={result.goal.query} expanded={i === selected} stacked={i === selected && recs.length > 1} tabOffset={i === selected ? 0 : Math.min(i, 4) * 44} onPress={i === selected ? undefined : () => setSelected(i)} />
+                    <ResultCard rec={rec} ask={result.goal.query} goalTerms={result.goal.terms} expanded={i === selected} stacked={i === selected && recs.length > 1} tabOffset={i === selected ? 0 : Math.min(i, 4) * 44} onPress={i === selected ? undefined : () => setSelected(i)} />
                   </View>
                 ))}
                 {result.nextSteps.length ? (

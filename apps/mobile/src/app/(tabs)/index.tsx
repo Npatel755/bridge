@@ -81,7 +81,7 @@ export default function Home() {
               <T variant="name">{home.data.goal.description}</T>
               <T variant="caption" color="inkSoft">{filled} of {plan.roles.length} roles have someone. {plan.roles.length - filled} open.</T>
             </View>
-            <View style={{ flexDirection: 'row', gap: 3 }} accessibilityElementsHidden>
+            <View style={{ flexDirection: 'row', gap: 3 }} aria-hidden>
               {plan.roles.map((r, i) => <View key={i} style={{ width: 10, height: 22, borderRadius: 2, backgroundColor: r.filled ? colors.action : 'transparent', borderWidth: r.filled ? 0 : 1, borderColor: colors.cardEdge, borderStyle: 'dashed' }} />)}
             </View>
           </Pressable>
