@@ -1,0 +1,17 @@
+{"ok":true,"records":[
+ {"kind":"person","providerId":"ex-101","sourceUrl":"https://example-social.test/u/lee","name":"Lee Zhang","headline":"Computer Vision Researcher at VisionLoop","company":"VisionLoop","relationship":"follower","direction":"inbound","confidence":0.6,
+  "provenance":{"name":{"source":"example:profile.name","retrievedAt":"2026-09-01T00:00:00Z","url":"https://example-social.test/u/lee"},"headline":{"source":"example:profile.headline","retrievedAt":"2026-09-01T00:00:00Z"}},
+  "suggestedTags":[{"kind":"skill","tag":"computer-vision","label":"Computer vision","basis":"Headline text (unconfirmed)"}]},
+ {"kind":"person","providerId":"ex-102","name":"Dana Whitfield","headline":"VC Associate","company":"Seed Trail Ventures","relationship":"following","direction":"outbound","confidence":0.6,
+  "provenance":{"name":{"source":"example:profile.name","retrievedAt":"2026-10-18T00:00:00Z"}}},
+ {"kind":"person","providerId":"ex-103","name":"Raj Patel","headline":"Hardware Product Manager","company":"Lumen Labs","relationship":"mutual_connection","direction":"mutual","confidence":0.7,
+  "provenance":{"name":{"source":"example:profile.name","retrievedAt":"2026-10-18T00:00:00Z"}},
+  "suggestedTags":[{"kind":"skill","tag":"product-management","label":"Product management","basis":"Title (unconfirmed)"}]},
+ {"kind":"person","providerId":"ex-104","name":"Alex Morgan","headline":"Totally not the same Alex Morgan","relationship":"follower","direction":"inbound","confidence":0.3,
+  "provenance":{"name":{"source":"example:profile.name","retrievedAt":"2026-10-18T00:00:00Z"}}},
+ {"kind":"edge","fromProviderId":"ex-101","toProviderId":"self","edgeKind":"follows","confidence":0.9,"provenance":{"source":"example:followers","retrievedAt":"2026-09-01T00:00:00Z"}},
+ {"kind":"edge","fromProviderId":null,"toProviderId":"ex-102","edgeKind":"follows","confidence":0.9,"provenance":{"source":"example:following","retrievedAt":"2026-10-18T00:00:00Z"}},
+ {"kind":"edge","fromProviderId":null,"toProviderId":"ex-103","edgeKind":"knows","confidence":0.6,"provenance":{"source":"example:connections","retrievedAt":"2026-10-18T00:00:00Z"}},
+ {"kind":"person","name":"","relationship":"personal","confidence":1,"provenance":{}},
+ {"kind":"edge","fromProviderId":null,"toProviderId":"ex-999","edgeKind":"is_best_friends_with","confidence":1,"provenance":{}}
+],"warnings":["Fixture data: 2 records are intentionally invalid to show host-side rejection."]}

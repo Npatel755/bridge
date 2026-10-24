@@ -1,0 +1,6 @@
+{"id":"linkedin-export","name":"LinkedIn connections export","version":"1.0.0","author":"Bridge",
+ "description":"Import the Connections.csv you download from LinkedIn (Settings > Data privacy > Get a copy of your data).",
+ "auth":{"type":"file","accept":[".csv"]},"capabilities":["import.people","import.edges"],"relationshipTypes":["mutual_connection"],
+ "limits":{"maxRecords":5000,"maxBytes":5000000},
+ "privacy":"Processed server-side inside your own account. Nothing is sent to LinkedIn.",
+ "limitations":"The export contains name, URL, email (if shared), company, position and connection date only. No skills, no followers, no messages. A 1st-degree connection is recorded as mutual_connection, not as a personal relationship, and position titles become suggested (unconfirmed) tags."}

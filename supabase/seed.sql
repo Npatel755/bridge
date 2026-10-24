@@ -21,7 +21,7 @@ begin
     industry = 'Software', city = 'Austin', region = 'TX', languages = '{English,Spanish}', contact_method = 'email', availability = 'Evenings and weekends',
     collaboration_prefs = 'Small teams, async-friendly', working_style = 'Ship small, learn fast', onboarding_complete = true, onboarding_step = 99 where id = v;
   insert into public.profile_tags (owner_id, kind, tag, label) values
-    (v,'skill','mobile-development','Mobile development'), (v,'skill','typescript','TypeScript'), (v,'skill','react','React'), (v,'skill','product-design','Product design'),
+    (v,'skill','mobile-development','Mobile development'), (v,'skill','typescript','TypeScript'), (v,'skill','react','React'), (v,'skill','product-design','Product design'), (v,'skill','hardware-prototyping','Hardware prototyping'),
     (v,'interest','cycling','Cycling'), (v,'interest','hardware-prototyping','Hardware prototyping'), (v,'interest','startups','Startups'), (v,'interest','sustainability','Sustainability'),
     (v,'goal','build-smart-bike-light','Build a smart bike light prototype'), (v,'goal','find-cofounder','Find a technical cofounder'),
     (v,'offer','mobile-development','Can build companion mobile apps'), (v,'offer','react','React code review');
@@ -29,7 +29,7 @@ begin
 
   -- Nearby demo personas (real demo accounts so both-opt-in rules are exercised for real)
   insert into demo.personas (key, email, display_name, role_title, company, school, city, bio, skills, interests, nearby_enabled, offset_east_m, offset_north_m, accuracy_m, radius_m, blocked_by_viewer, note) values
-   ('maya','maya.demo@bridge.local','Maya Chen','Firmware Engineer','Lumen Labs','State University','Austin','Embedded engineer, weekend cyclist.','{embedded-systems,firmware,c-cpp}','{cycling,hardware-prototyping}',true,20,22,8,100,false,'Existing contact; shares firmware + cycling. Should match (close).'),
+   ('maya','maya.demo@bridge.local','Maya Chen','Firmware Engineer','Lumen Labs','State University','Austin','Embedded engineer, weekend cyclist.','{embedded-systems,firmware,hardware-prototyping}','{cycling,hardware-prototyping}',true,20,22,8,100,false,'Existing contact; shares firmware + cycling. Should match (close).'),
    ('devon','devon.demo@bridge.local','Devon Park','Indie Developer','Self-employed','Tech Institute','Austin','Building side projects, looking for a cofounder.','{typescript,react,backend}','{startups,cycling}',true,-45,40,12,100,false,'New person; shares TypeScript + startups/cycling. Should match (nearby).'),
    ('lena','lena.demo@bridge.local','Lena Ortiz','iOS Engineer','AppWorks','','Austin','Mobile dev, climber.','{typescript,mobile-development}','{climbing,outdoors}',true,15,-20,10,100,false,'Shares skills but NO shared interest. Excluded.'),
    ('omar','omar.demo@bridge.local','Omar Haddad','Product Designer','Studio O','','Austin','Designer who cycles.','{product-design,ux-design}','{cycling,startups}',false,30,10,9,100,false,'Nearby turned OFF on their side. Excluded.'),

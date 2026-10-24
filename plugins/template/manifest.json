@@ -1,0 +1,5 @@
+{"id":"my-connector","name":"My connector","version":"0.1.0","author":"you",
+ "description":"Describe what this imports and from where.",
+ "auth":{"type":"api_key"},"capabilities":["import.people"],"relationshipTypes":["mutual_connection","follower"],
+ "service":{"url":"https://my-connector.example.com"},"limits":{"maxRecords":1000,"timeoutMs":8000},
+ "privacy":"Say what is sent where.","limitations":"Say what the provider does not expose."}

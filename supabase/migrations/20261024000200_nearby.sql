@@ -151,7 +151,7 @@ $$;
 
 -- Publish a location sample. Returns {status, expires_at, matches:[match_event ids]}.
 -- Enforces: enabled prefs, active session, freshness <=120s, accuracy <=50m, rate limit, both-opt-in, overlap, block, radius=min, 2 stable samples, cooldowns.
-create or replace function public.nearby_publish(lat double precision, lng double precision, accuracy_m real, sampled_at timestamptz, simulated boolean default false)
+create or replace function public.nearby_publish(lat double precision, lng double precision, accuracy_m real, sampled_at timestamptz, p_simulated boolean default false)
 returns jsonb
 language plpgsql security definer set search_path = public, private as $$
 declare
@@ -164,7 +164,7 @@ declare
   my_skills text[]; my_interests text[];
   shared_s text[]; shared_i text[];
   rel real; streak int; recent_alerts int; last_alert timestamptz; existing boolean; other_prefs public.discovery_prefs;
-  my_count int; their_count int;
+  my_count int; their_count int; ev_id uuid;
 begin
   if me is null then raise exception 'not authenticated' using errcode = '42501'; end if;
   perform private.purge_expired_presence();
@@ -172,8 +172,8 @@ begin
   if prefs is null or not prefs.enabled then return jsonb_build_object('status','disabled'); end if;
   select * into sess from public.discovery_sessions where owner_id = me and ended_at is null order by started_at desc limit 1;
   if sess is null then return jsonb_build_object('status','no_session'); end if;
-  if simulated and sess.mode <> 'simulated' then return jsonb_build_object('status','simulation_not_allowed'); end if;
-  if not simulated and sess.mode = 'simulated' then return jsonb_build_object('status','session_is_simulated'); end if;
+  if p_simulated and sess.mode <> 'simulated' then return jsonb_build_object('status','simulation_not_allowed'); end if;
+  if not p_simulated and sess.mode = 'simulated' then return jsonb_build_object('status','session_is_simulated'); end if;
   if sampled_at < now() - interval '120 seconds' or sampled_at > now() + interval '10 seconds' then
     return jsonb_build_object('status','stale_sample'); end if;
   if accuracy_m is null or accuracy_m > 50 then return jsonb_build_object('status','low_accuracy'); end if;
@@ -183,7 +183,7 @@ begin
     return jsonb_build_object('status','rate_limited','expires_at',pres.expires_at); end if;
 
   insert into private.presence (owner_id, session_id, geog, accuracy_m, sampled_at, expires_at, radius_m, simulated, publish_count, last_publish_at)
-  values (me, sess.id, st_setsrid(st_makepoint(lng, lat),4326)::geography, accuracy_m, sampled_at, now() + interval '300 seconds', prefs.radius_m, simulated, 1, now())
+  values (me, sess.id, st_setsrid(st_makepoint(lng, lat),4326)::geography, accuracy_m, sampled_at, now() + interval '300 seconds', prefs.radius_m, p_simulated, 1, now())
   on conflict (owner_id) do update set session_id = excluded.session_id, geog = excluded.geog, accuracy_m = excluded.accuracy_m,
     sampled_at = excluded.sampled_at, expires_at = excluded.expires_at, radius_m = excluded.radius_m, simulated = excluded.simulated,
     publish_count = private.presence.publish_count + 1, last_publish_at = now();
@@ -203,8 +203,8 @@ begin
     join public.profiles pr on pr.id = p.owner_id
     where p.owner_id <> me and p.expires_at > now()
       and p.sampled_at > now() - interval '120 seconds' and p.accuracy_m <= 50
-      and p.simulated = simulated
-      and (not simulated or pr.is_demo)        -- simulated sessions only match demo personas, never other real users
+      and p.simulated = p_simulated
+      and (not p_simulated or pr.is_demo)        -- simulated sessions only match demo personas, never other real users
       and st_dwithin(p.geog, st_setsrid(st_makepoint(lng, lat),4326)::geography, 250)
   loop
     if cand.dist > least(prefs.radius_m, cand.other_radius) then
@@ -241,9 +241,9 @@ begin
     if recent_alerts >= prefs.burst_max then continue; end if;
 
     insert into public.match_events (owner_id, other_id, session_id, band, shared_skills, shared_interests, relevance, is_existing_contact, simulated)
-      values (me, cand.other_id, sess.id, public.distance_band(cand.dist), shared_s, shared_i, rel, existing, simulated)
-      returning id into cand.other_id; -- reuse var
-    new_events := new_events || cand.other_id;
+      values (me, cand.other_id, sess.id, public.distance_band(cand.dist), shared_s, shared_i, rel, existing, p_simulated)
+      returning id into ev_id;
+    new_events := new_events || ev_id;
   end loop;
 
   return jsonb_build_object('status','ok','expires_at', now() + interval '300 seconds','matches', to_jsonb(new_events));
