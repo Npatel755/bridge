@@ -1,0 +1,23 @@
+{
+  "name": "bridge",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "plugins/*"
+  ],
+  "scripts": {
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:db": "node --test --experimental-strip-types supabase/tests/*.test.ts",
+    "sync:functions": "node scripts/sync-functions-shared.mjs",
+    "check:functions": "node scripts/sync-functions-shared.mjs --check",
+    "plugin:test": "npm run --workspace @bridge/plugin-sdk cli -- test",
+    "web:serve": "node scripts/web-preview-server.mjs"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.3"
+  }
+}

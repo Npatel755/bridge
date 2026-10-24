@@ -1,0 +1,116 @@
+import type { TagKind } from './types.ts';
+
+export interface TaxonomyEntry {
+  tag: string;
+  label: string;
+  kinds: TagKind[];
+  aliases: string[];
+  related: string[];
+}
+
+const e = (
+  tag: string,
+  label: string,
+  kinds: TagKind[],
+  aliases: string[] = [],
+  related: string[] = [],
+): TaxonomyEntry => ({ tag, label, kinds, aliases, related });
+
+const S: TagKind[] = ['skill'];
+const I: TagKind[] = ['interest'];
+const B: TagKind[] = ['skill', 'interest'];
+
+/** Canonical skills/interests with synonyms. Free-text tags outside this list are still allowed. */
+export const TAXONOMY: TaxonomyEntry[] = [
+  e('embedded-systems', 'Embedded systems', B, ['embedded', 'embedded engineering', 'embedded electronics', 'microcontrollers', 'microcontroller', 'mcu', 'arduino', 'esp32', 'stm32'], ['firmware', 'pcb-design', 'electrical-engineering', 'hardware-prototyping', 'iot']),
+  e('firmware', 'Firmware', S, ['firmware engineering', 'rtos', 'embedded c'], ['embedded-systems', 'c-cpp']),
+  e('pcb-design', 'PCB design', S, ['pcb', 'circuit board design', 'kicad', 'altium', 'circuit design'], ['electrical-engineering', 'embedded-systems']),
+  e('electrical-engineering', 'Electrical engineering', S, ['electronics', 'ee', 'circuits', 'power electronics', 'analog electronics'], ['pcb-design', 'embedded-systems']),
+  e('hardware-prototyping', 'Hardware prototyping', S, ['prototyping hardware', 'hardware', 'physical prototyping', 'rapid prototyping'], ['embedded-systems', '3d-printing', 'industrial-design']),
+  e('industrial-design', 'Industrial design', S, ['id', 'product industrial design', 'enclosure design'], ['product-design', 'cad', '3d-printing']),
+  e('product-design', 'Product design', S, ['physical product design', 'hardware product design'], ['industrial-design', 'ux-design']),
+  e('mechanical-engineering', 'Mechanical engineering', S, ['mechanical', 'mech e', 'mechanisms'], ['cad', 'manufacturing']),
+  e('cad', 'CAD', S, ['solidworks', 'fusion 360', 'onshape', '3d modeling', 'computer-aided design'], ['industrial-design', 'mechanical-engineering']),
+  e('3d-printing', '3D printing', B, ['additive manufacturing', '3d printers', 'fdm'], ['hardware-prototyping', 'cad', 'makerspace']),
+  e('manufacturing', 'Manufacturing', B, ['manufacturing advice', 'production', 'contract manufacturing', 'factory', 'dfm', 'design for manufacturing'], ['injection-molding', 'supply-chain', 'sourcing']),
+  e('injection-molding', 'Injection molding', S, ['injection moulding', 'tooling', 'molding'], ['manufacturing']),
+  e('supply-chain', 'Supply chain', S, ['logistics', 'procurement', 'operations supply chain'], ['manufacturing', 'sourcing']),
+  e('sourcing', 'Component sourcing', S, ['component sourcing', 'parts sourcing', 'shenzhen sourcing'], ['supply-chain', 'manufacturing']),
+  e('computer-vision', 'Computer vision', B, ['cv', 'image recognition', 'object detection', 'opencv', 'vision models'], ['machine-learning', 'deep-learning', 'robotics']),
+  e('machine-learning', 'Machine learning', B, ['ml', 'predictive modeling', 'ml engineering'], ['deep-learning', 'data-science', 'computer-vision', 'llms']),
+  e('deep-learning', 'Deep learning', S, ['neural networks', 'pytorch', 'tensorflow'], ['machine-learning', 'computer-vision']),
+  e('llms', 'LLMs', B, ['large language models', 'generative ai', 'genai', 'prompt engineering', 'ai agents'], ['machine-learning', 'nlp']),
+  e('nlp', 'NLP', S, ['natural language processing', 'text mining'], ['llms', 'machine-learning']),
+  e('ai', 'Artificial intelligence', I, ['artificial intelligence', 'a.i.'], ['machine-learning', 'llms']),
+  e('data-science', 'Data science', S, ['data analysis', 'analytics', 'statistics'], ['machine-learning', 'data-engineering']),
+  e('data-engineering', 'Data engineering', S, ['etl', 'data pipelines', 'spark'], ['data-science', 'databases']),
+  e('backend', 'Backend engineering', S, ['backend development', 'server-side', 'apis', 'api design', 'node.js', 'nodejs'], ['databases', 'cloud']),
+  e('frontend', 'Frontend engineering', S, ['frontend development', 'web development', 'web dev', 'html', 'css'], ['react', 'ux-design']),
+  e('react', 'React', S, ['reactjs', 'react.js', 'next.js', 'nextjs'], ['frontend', 'typescript']),
+  e('mobile-development', 'Mobile development', S, ['mobile apps', 'app development', 'react native', 'expo', 'ios development', 'android development', 'swift', 'kotlin', 'flutter'], ['frontend', 'ux-design']),
+  e('python', 'Python', S, [], ['data-science', 'backend']),
+  e('typescript', 'TypeScript', S, ['javascript', 'js', 'ts'], ['frontend', 'backend']),
+  e('rust', 'Rust', S, [], ['systems-programming']),
+  e('c-cpp', 'C/C++', S, ['c++', 'cpp', 'c programming'], ['firmware', 'systems-programming']),
+  e('systems-programming', 'Systems programming', S, ['low-level programming', 'operating systems'], ['c-cpp', 'rust']),
+  e('robotics', 'Robotics', B, ['robots', 'ros', 'autonomous systems', 'drones'], ['embedded-systems', 'computer-vision', 'mechanical-engineering']),
+  e('iot', 'IoT', B, ['internet of things', 'connected devices', 'smart devices', 'bluetooth', 'ble'], ['embedded-systems', 'firmware']),
+  e('sensors', 'Sensors', S, ['sensor fusion', 'imu', 'lidar'], ['embedded-systems', 'signal-processing']),
+  e('signal-processing', 'Signal processing', S, ['dsp', 'digital signal processing'], ['sensors', 'electrical-engineering']),
+  e('cloud', 'Cloud & DevOps', S, ['devops', 'aws', 'gcp', 'azure', 'kubernetes', 'docker', 'infrastructure'], ['backend']),
+  e('databases', 'Databases', S, ['sql', 'postgres', 'postgresql', 'database design'], ['backend', 'data-engineering']),
+  e('cybersecurity', 'Cybersecurity', B, ['security', 'infosec', 'appsec', 'penetration testing'], ['cloud']),
+  e('ux-design', 'UX design', S, ['ux', 'user experience', 'interaction design', 'ui design', 'ui/ux', 'figma'], ['user-research', 'product-design', 'accessibility']),
+  e('user-research', 'User research', S, ['usability testing', 'customer interviews', 'user interviews'], ['ux-design', 'product-management']),
+  e('accessibility', 'Accessibility', B, ['a11y', 'inclusive design'], ['ux-design']),
+  e('branding', 'Branding', S, ['brand design', 'visual identity', 'graphic design'], ['marketing']),
+  e('product-management', 'Product management', S, ['pm', 'product manager', 'product strategy', 'roadmapping'], ['user-research', 'startups']),
+  e('project-management', 'Project management', S, ['program management', 'agile', 'scrum'], ['product-management', 'operations']),
+  e('marketing', 'Marketing', S, ['growth marketing', 'digital marketing', 'content marketing', 'go-to-market', 'gtm', 'growth'], ['sales', 'branding']),
+  e('sales', 'Sales', S, ['business development', 'bizdev', 'partnerships', 'enterprise sales'], ['marketing']),
+  e('fundraising', 'Fundraising', S, ['raising capital', 'pitching investors', 'pitch decks', 'seed round'], ['venture-capital', 'startups']),
+  e('venture-capital', 'Venture capital', B, ['vc', 'investing', 'angel investing', 'investor'], ['fundraising', 'startups']),
+  e('startups', 'Startups', I, ['startup', 'entrepreneurship', 'founding', 'founder', 'cofounder', 'co-founder', 'joining a startup', 'early-stage companies'], ['fundraising', 'product-management']),
+  e('operations', 'Operations', S, ['ops', 'business operations'], ['project-management', 'supply-chain']),
+  e('legal', 'Legal', S, ['law', 'contracts', 'startup law', 'patents', 'intellectual property', 'ip law'], ['startups']),
+  e('finance', 'Finance', S, ['accounting', 'financial modeling', 'bookkeeping'], ['fundraising']),
+  e('recruiting', 'Recruiting', S, ['hiring', 'talent acquisition', 'recruiter'], ['community-building']),
+  e('community-building', 'Community building', B, ['community', 'community management', 'organizing', 'community organizing', 'meetups'], ['event-organizing', 'makerspace']),
+  e('event-organizing', 'Event organizing', S, ['events', 'event planning', 'hackathon organizing'], ['community-building', 'hackathons']),
+  e('makerspace', 'Makerspaces', I, ['makerspaces', 'hackerspace', 'maker community', 'maker', 'making'], ['3d-printing', 'hardware-prototyping', 'community-building']),
+  e('hackathons', 'Hackathons', I, ['hackathon', 'game jams'], ['startups', 'event-organizing']),
+  e('open-source', 'Open source', B, ['oss', 'open-source software'], ['typescript', 'python']),
+  e('mentoring', 'Mentoring', S, ['mentorship', 'coaching'], ['teaching']),
+  e('teaching', 'Teaching', S, ['education', 'tutoring', 'instruction', 'curriculum design'], ['mentoring']),
+  e('public-speaking', 'Public speaking', S, ['speaking', 'presentations'], ['writing']),
+  e('writing', 'Writing', B, ['technical writing', 'copywriting', 'blogging', 'journalism'], ['public-speaking']),
+  e('video-production', 'Video production', B, ['video editing', 'filmmaking'], ['photography']),
+  e('photography', 'Photography', B, ['photo'], ['video-production']),
+  e('music', 'Music', I, ['music production', 'musician'], []),
+  e('cycling', 'Cycling', I, ['bikes', 'bike', 'bicycles', 'bicycle', 'cyclist', 'cyclists', 'biking', 'bike commuting', 'cycling technology', 'bike tech'], ['transportation', 'outdoors']),
+  e('running', 'Running', I, ['runner', 'marathons'], ['outdoors', 'fitness']),
+  e('climbing', 'Climbing', I, ['bouldering', 'rock climbing'], ['outdoors', 'fitness']),
+  e('outdoors', 'Outdoors', I, ['hiking', 'camping', 'backpacking'], ['cycling', 'climbing']),
+  e('fitness', 'Fitness', I, ['gym', 'strength training'], ['running']),
+  e('sustainability', 'Sustainability', I, ['sustainable design', 'circular economy'], ['climate-tech']),
+  e('climate-tech', 'Climate tech', B, ['climate', 'cleantech', 'clean energy', 'renewables'], ['energy', 'sustainability']),
+  e('energy', 'Energy systems', B, ['batteries', 'battery', 'solar', 'power systems', 'energy storage'], ['climate-tech', 'electrical-engineering']),
+  e('transportation', 'Transportation & mobility', B, ['mobility', 'micromobility', 'e-bikes', 'ebikes', 'scooters', 'urban mobility', 'automotive'], ['cycling', 'urban-planning']),
+  e('urban-planning', 'Urban planning', B, ['city planning', 'urbanism', 'smart cities'], ['transportation']),
+  e('healthcare', 'Healthcare', B, ['health tech', 'healthtech', 'digital health'], ['medical-devices', 'biotech']),
+  e('medical-devices', 'Medical devices', B, ['medtech', 'medical device'], ['healthcare', 'hardware-prototyping']),
+  e('biotech', 'Biotech', B, ['biotechnology', 'life sciences'], ['healthcare']),
+  e('fintech', 'Fintech', B, ['payments', 'financial technology'], ['finance']),
+  e('blockchain', 'Blockchain', B, ['crypto', 'web3'], ['fintech']),
+  e('gaming', 'Gaming', I, ['games', 'game development', 'gamedev', 'video games'], ['ar-vr']),
+  e('ar-vr', 'AR/VR', B, ['augmented reality', 'virtual reality', 'xr', 'mixed reality'], ['gaming', 'computer-vision']),
+  e('design-thinking', 'Design thinking', S, ['human-centered design', 'service design'], ['ux-design', 'user-research']),
+  e('qa-testing', 'QA & testing', S, ['quality assurance', 'hardware testing', 'test engineering', 'reliability testing'], ['user-testing']),
+  e('user-testing', 'Product testing', I, ['beta testing', 'field testing', 'testers', 'product testing'], ['qa-testing', 'user-research']),
+  e('wearables', 'Wearables', B, ['wearable tech', 'smartwatches'], ['iot', 'embedded-systems']),
+  e('lighting', 'Lighting design', B, ['led', 'leds', 'lighting', 'optics'], ['electrical-engineering', 'industrial-design']),
+];
+
+export const TAXONOMY_BY_TAG: ReadonlyMap<string, TaxonomyEntry> = new Map(
+  TAXONOMY.map((entry) => [entry.tag, entry]),
+);
