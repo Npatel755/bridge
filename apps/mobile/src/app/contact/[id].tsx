@@ -37,8 +37,8 @@ export default function ContactDetail() {
   if (d.error || !d.data) return <><TopBar onBack={() => router.back()} /><Screen><Notice>{d.error ?? 'This card could not be found.'}</Notice></Screen></>;
   const { c, claims, ev, notes, edges, rem, drafts } = d.data;
   const route = contactRoute(c.relationship, c.relationship_status);
-  const setClaim = async (cid: string, status: 'confirmed' | 'rejected') => { await supabase.from('contact_claims').update({ status }).eq('id', cid); reload(); };
-  const setEdge = async (eid: string, status: 'confirmed' | 'rejected') => { await supabase.from('contact_edges').update({ status }).eq('id', eid); reload(); };
+  const setClaim = async (cid: string, status: 'confirmed' | 'rejected') => { const { error: e } = await supabase.from('contact_claims').update({ status }).eq('id', cid); if (e) setError(errorMessage(e)); else reload(); };
+  const setEdge = async (eid: string, status: 'confirmed' | 'rejected') => { const { error: e } = await supabase.from('contact_edges').update({ status }).eq('id', eid); if (e) setError(errorMessage(e)); else reload(); };
   const byKind = (k: string[]) => claims.filter((x) => k.includes(x.kind));
   const evidenceFor = (evidenceId: string | null) => ev.find((e) => e.id === evidenceId);
 

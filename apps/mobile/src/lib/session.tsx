@@ -60,7 +60,9 @@ export function SessionProvider({ children }: PropsWithChildren) {
   }, []);
 
   useEffect(() => {
-    if (!userId) return;
+    // Nearby state is module-level; never let one account's session leak into the next.
+    setNearbyOn(false);
+    if (!userId) { stopCollecting().catch(() => {}); return; }
     let cancelled = false;
     (async () => {
       // the auth trigger creates the profile row; retry briefly right after signup

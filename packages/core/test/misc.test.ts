@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cosine, draftOutreach, hashEmbedding, mailtoUrl } from '../src/index.ts';
+import { cosine, draftOutreach, hashEmbedding, mailtoUrl, toRelationship } from '../src/index.ts';
 
 describe('hash embedding fallback', () => {
   it('is deterministic and places synonyms closer than unrelated text', () => {
@@ -26,5 +26,17 @@ describe('outreach drafts', () => {
     });
     expect(d.kind).toBe('introduction_request');
     expect(d.subject).toMatch(/Priya/);
+  });
+});
+
+describe('relationship vocabulary mapping', () => {
+  it('maps the app vocabulary into core relationship types without warming followers', () => {
+    for (const s of ['friend', 'classmate', 'mentor', 'mentee', 'family', 'acquaintance', 'client', 'collaborator', 'met_once']) expect(toRelationship(s)).toBe('personal');
+    expect(toRelationship('former_colleague')).toBe('colleague');
+    expect(toRelationship('colleague')).toBe('colleague');
+    expect(toRelationship('mutual_connection')).toBe('mutual_connection');
+    expect(toRelationship('follower')).toBe('follower');
+    expect(toRelationship('following')).toBe('following');
+    expect(toRelationship('garbage')).toBe('unknown');
   });
 });

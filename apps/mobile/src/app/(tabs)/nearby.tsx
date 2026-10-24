@@ -86,8 +86,8 @@ export default function Nearby() {
     try {
       const me = session?.user.id;
       if (action === 'intro') { const { error } = await supabase.from('intro_requests').insert({ from_id: me, to_id: m.other_id, match_event_id: m.event_id, message: `Hi ${m.profile.display_name.split(' ')[0]}, we overlap on ${[...m.shared_skills, ...m.shared_interests].slice(0, 2).join(' and ')}. Happy to say hello if you are up for it.` }); if (error) throw error; }
-      if (action === 'mute') { const { error } = await supabase.from('mutes').upsert({ owner_id: me, other_id: m.other_id, until: new Date(now + 86_400_000).toISOString() }); if (error) throw error; }
-      if (action === 'block') { const { error } = await supabase.from('blocks').insert({ blocker_id: me, blocked_id: m.other_id }); if (error) throw error; }
+      if (action === 'mute') { const { error } = await supabase.from('mutes').upsert({ owner_id: me, other_id: m.other_id, until: new Date(now + 86_400_000).toISOString() }, { onConflict: 'owner_id,other_id' }); if (error) throw error; }
+      if (action === 'block') { const { error } = await supabase.from('blocks').upsert({ blocker_id: me, blocked_id: m.other_id }, { onConflict: 'blocker_id,blocked_id' }); if (error) throw error; }
       if (action === 'report') { const { error } = await supabase.from('reports').insert({ reporter_id: me, reported_id: m.other_id, match_event_id: m.event_id, reason: 'inappropriate', details: 'Reported from a Nearby match card' }); if (error) throw error; }
       const statusFor = { dismiss: 'dismissed', mute: 'muted', block: 'blocked', report: 'reported', intro: 'intro_requested' } as const;
       await supabase.from('match_events').update({ status: statusFor[action] }).eq('id', m.event_id);

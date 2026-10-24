@@ -70,6 +70,18 @@ export default function Home() {
         </Card>
       ) : null}
 
+      {!profile?.is_demo && home.data && n === 0 ? (
+        <Card dashed>
+          <T variant="name">Your cards are empty</T>
+          <T variant="body" color="inkSoft">Bridge only answers from people you add. Start with one card or a note about someone you met, or import a list.</T>
+          <Row>
+            <Button size="sm" variant="primary" title="Add a card" onPress={() => router.push('/contact/edit')} />
+            <Button size="sm" title="Write a note" onPress={() => router.push('/note/new')} />
+            <Button size="sm" title="Import" onPress={() => router.push('/plugins')} />
+          </Row>
+        </Card>
+      ) : null}
+
       <Row between style={{ marginTop: space[3] }}>
         <T variant="title">Your goal</T>
         <Link href="/team" asChild><Button variant="ghost" size="sm" title="Build my team" /></Link>
