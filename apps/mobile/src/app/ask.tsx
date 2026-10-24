@@ -11,7 +11,7 @@ export default function Ask() {
   const params = useLocalSearchParams<{ q?: string }>();
   const [q, setQ] = useState(params.q ?? '');
   const [editing, setEditing] = useState(!params.q);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(!!params.q);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AskResponse | null>(null);
   const [selected, setSelected] = useState(0);
@@ -22,7 +22,15 @@ export default function Ask() {
     setBusy(true); setError(null); setEditing(false); setSelected(0);
     try { const r = await api.ask(query.trim()); setResult(r); } catch (e) { setError(errorMessage(e)); } finally { setBusy(false); }
   }
-  useEffect(() => { if (params.q) run(params.q); }, [params.q]);
+  useEffect(() => {
+    const q0 = params.q?.trim();
+    if (!q0) return;
+    let cancelled = false;
+    (async () => {
+      try { const r = await api.ask(q0); if (!cancelled) { setResult(r); setSelected(0); } } catch (e) { if (!cancelled) setError(errorMessage(e)); } finally { if (!cancelled) setBusy(false); }
+    })();
+    return () => { cancelled = true; };
+  }, [params.q]);
   useEffect(() => { import('@/lib/supabase').then(({ supabase }) => supabase.from('contacts').select('id', { count: 'exact', head: true }).eq('archived', false).then((r) => setCards(r.count ?? 0))); }, []);
 
   const recs = result?.recommendations ?? [];
@@ -79,7 +87,7 @@ export default function Ask() {
                   <Card key={o.contactId}>
                     <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/contact/[id]', params: { id: o.contactId } })}>
                       {o.youCanHelp.slice(0, 1).map((h, i) => <T key={i} variant="note">{o.name.split(' ')[0]} wants {h.need.toLowerCase()}. You offer {h.yourMatch.join(', ')}.</T>)}
-                      {o.youCanHelp.slice(0, 1).map((h, i) => <T key={i} variant="caption" color="inkSoft">{o.name.split(' ')[0]}'s goal, {h.source}, {h.date.slice(0, 10)}. Your offer, your profile.</T>)}
+                      {o.youCanHelp.slice(0, 1).map((h, i) => <T key={i} variant="caption" color="inkSoft">{`${o.name.split(' ')[0]}'s goal, ${h.source}, ${h.date.slice(0, 10)}. Your offer, your profile.`}</T>)}
                     </Pressable>
                   </Card>
                 ))}

@@ -1,5 +1,5 @@
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Linking, Platform, View } from 'react-native';
 
 import { Button, Card, Flag, Loading, NearbyMatchCard, NearbyRings, NearbyStatusRow, Notice, Row, Screen, ScreenTitle, Segmented, Sheet, T, Toggle } from '@/components';
@@ -24,8 +24,7 @@ export default function Nearby() {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<{ kind: 'block' | 'report'; m: MatchPayload } | null>(null);
-  const [now, setNow] = useState(Date.now());
-  const announced = useRef(new Set<string>());
+  const [now, setNow] = useState(() => Date.now());
 
   const status = useAsync<NearbyStatus>(getStatus);
   const matches = useAsync(async () => {
@@ -38,7 +37,8 @@ export default function Nearby() {
     const { data } = await supabase.from('intro_requests').select('id, from_id, message, status, created_at').eq('to_id', me).eq('status', 'pending');
     return data ?? [];
   });
-  const refreshAll = useCallback(() => { status.reload(); matches.reload(); intros.reload(); getCapability().then(setCap); }, [status.reload, matches.reload, intros.reload]);
+  const reloadStatus = status.reload, reloadMatches = matches.reload, reloadIntros = intros.reload;
+  const refreshAll = useCallback(() => { reloadStatus(); reloadMatches(); reloadIntros(); getCapability().then(setCap); }, [reloadStatus, reloadMatches, reloadIntros]);
   useFocusEffect(useCallback(() => { refreshAll(); }, [refreshAll]));
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 15_000); return () => clearInterval(t); }, []);
 
@@ -86,7 +86,7 @@ export default function Nearby() {
     try {
       const me = session?.user.id;
       if (action === 'intro') { const { error } = await supabase.from('intro_requests').insert({ from_id: me, to_id: m.other_id, match_event_id: m.event_id, message: `Hi ${m.profile.display_name.split(' ')[0]}, we overlap on ${[...m.shared_skills, ...m.shared_interests].slice(0, 2).join(' and ')}. Happy to say hello if you are up for it.` }); if (error) throw error; }
-      if (action === 'mute') { const { error } = await supabase.from('mutes').upsert({ owner_id: me, other_id: m.other_id, until: new Date(Date.now() + 86_400_000).toISOString() }); if (error) throw error; }
+      if (action === 'mute') { const { error } = await supabase.from('mutes').upsert({ owner_id: me, other_id: m.other_id, until: new Date(now + 86_400_000).toISOString() }); if (error) throw error; }
       if (action === 'block') { const { error } = await supabase.from('blocks').insert({ blocker_id: me, blocked_id: m.other_id }); if (error) throw error; }
       if (action === 'report') { const { error } = await supabase.from('reports').insert({ reporter_id: me, reported_id: m.other_id, match_event_id: m.event_id, reason: 'inappropriate', details: 'Reported from a Nearby match card' }); if (error) throw error; }
       const statusFor = { dismiss: 'dismissed', mute: 'muted', block: 'blocked', report: 'reported', intro: 'intro_requested' } as const;
@@ -113,10 +113,8 @@ export default function Nearby() {
       <NearbyRings matchBands={live.map((m) => m.band)} radiusM={radius} />
 
       {live.map((m, i) => {
-        const first = !announced.current.has(m.event_id);
-        announced.current.add(m.event_id);
         return (
-          <NearbyMatchCard key={m.event_id} match={m} announce={first && i === 0} starter={starterFor(m)}
+          <NearbyMatchCard key={m.event_id} match={m} announce={i === 0} starter={starterFor(m)}
             onRequestIntro={() => act(m, 'intro')} onDismiss={() => act(m, 'dismiss')} onMute={() => act(m, 'mute')} onBlock={() => setConfirm({ kind: 'block', m })} onReport={() => setConfirm({ kind: 'report', m })} />
         );
       })}

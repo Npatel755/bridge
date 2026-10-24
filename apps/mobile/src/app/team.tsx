@@ -24,6 +24,7 @@ export default function Team() {
   useEffect(() => {
     if (params.id) supabase.from('project_requests').select('description, plan, id').eq('id', params.id).single().then(({ data }) => { if (data?.plan) { setDescription(data.description); setPlan({ ...(data.plan as TeamResponse), requestId: data.id, reciprocal: (data.plan as TeamResponse).reciprocal ?? [] }); } });
     else if (params.description) run();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id, params.description]);
 
   async function run(custom?: EditableRole[]) {

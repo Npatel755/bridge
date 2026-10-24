@@ -41,8 +41,10 @@ const Ctx = createContext<SessionState>({ session: null, profile: null, loading:
 
 export function SessionProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<Session | null>(null);
+  const [authReady, setAuthReady] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [profileFor, setProfileFor] = useState<string | null>(null);
+  const userId = session?.user.id ?? null;
 
   const refreshProfile = useCallback(async () => {
     const { data } = await supabase.from('profiles').select('*').maybeSingle();
@@ -50,26 +52,30 @@ export function SessionProvider({ children }: PropsWithChildren) {
   }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    supabase.auth.getSession().then(({ data }) => { setSession(data.session); setAuthReady(true); });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
     return () => sub.subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
-    if (!session) { setProfile(null); setLoading(false); return; }
+    if (!userId) return;
     let cancelled = false;
     (async () => {
       // the auth trigger creates the profile row; retry briefly right after signup
-      for (let i = 0; i < 5; i++) {
+      let found: Profile | null = null;
+      for (let i = 0; i < 5 && !found; i++) {
         const { data } = await supabase.from('profiles').select('*').maybeSingle();
         if (cancelled) return;
-        if (data) { setProfile(data as Profile); break; }
-        await new Promise((r) => setTimeout(r, 300));
+        found = (data as Profile | null) ?? null;
+        if (!found) await new Promise((r) => setTimeout(r, 300));
       }
-      setLoading(false);
+      setProfile(found);
+      setProfileFor(userId);
     })();
     return () => { cancelled = true; };
-  }, [session?.user.id]);
+  }, [userId]);
+  const loading = !authReady || (!!userId && profileFor !== userId);
+  const currentProfile = userId && profileFor === userId ? profile : null;
 
   useEffect(() => {
     if (Platform.OS === 'web') return;
@@ -80,9 +86,9 @@ export function SessionProvider({ children }: PropsWithChildren) {
   }, []);
 
   const value = useMemo<SessionState>(() => ({
-    session, profile, loading, refreshProfile,
+    session, profile: currentProfile, loading, refreshProfile,
     signOut: async () => { await supabase.auth.signOut(); },
-  }), [session, profile, loading, refreshProfile]);
+  }), [session, currentProfile, loading, refreshProfile]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

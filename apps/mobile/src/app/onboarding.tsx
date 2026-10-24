@@ -26,8 +26,8 @@ export default function Onboarding() {
   const { space } = useTheme();
   const { edit } = useLocalSearchParams<{ edit?: string }>();
   const { profile, session, refreshProfile } = useSession();
-  const [step, setStep] = useState(1);
-  const [form, setForm] = useState<Partial<Profile>>({});
+  const [step, setStep] = useState(() => (edit || !profile ? 1 : Math.min(Math.max(profile.onboarding_step || 1, 1), TOTAL)));
+  const [form, setForm] = useState<Partial<Profile>>(() => profile ?? {});
   const [tags, setTags] = useState<TagRowT[]>([]);
   const [custom, setCustom] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -35,11 +35,8 @@ export default function Onboarding() {
   const [nearbyMsg, setNearbyMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!profile) return;
-    setForm(profile);
-    setStep(edit ? 1 : Math.min(Math.max(profile.onboarding_step || 1, 1), TOTAL));
     supabase.from('profile_tags').select('id, kind, tag, label, status, discoverable').neq('status', 'rejected').then(({ data }) => setTags((data ?? []) as TagRowT[]));
-  }, [profile?.id, edit]);
+  }, []);
 
   const set = (k: keyof Profile, v: unknown) => setForm((f) => ({ ...f, [k]: v }));
   const toggleList = (k: 'collaboration_prefs' | 'networking_prefs' | 'languages', v: string) => { const cur = (form[k] as string[] | undefined) ?? []; set(k, cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]); };

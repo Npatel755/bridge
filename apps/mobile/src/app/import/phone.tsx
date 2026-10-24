@@ -30,7 +30,7 @@ export default function ImportPhone() {
       setRows(data.filter((c) => c.name).map((c) => ({ id: c.id ?? c.name!, name: c.name!, email: c.emails?.[0]?.email ?? null, company: c.company ?? null, title: c.jobTitle ?? null })));
     } catch (e) { setError(errorMessage(e)); }
   }
-  useEffect(() => { if (!unsupported) load(); }, [unsupported]);
+  useEffect(() => { if (unsupported) return; const t = setTimeout(load, 0); return () => clearTimeout(t); }, [unsupported]);
   const visible = useMemo(() => rows.filter((r) => !q || [r.name, r.company, r.email].some((s) => s?.toLowerCase().includes(q.toLowerCase()))).slice(0, 200), [rows, q]);
   const n = Object.values(picked).filter(Boolean).length;
 

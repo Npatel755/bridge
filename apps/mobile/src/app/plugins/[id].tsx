@@ -101,7 +101,7 @@ export default function PluginDetail() {
 
             {isLinkedInApi ? (
               <Card>
-                <T variant="body">LinkedIn's public API does not share your connections with apps. Sign in with LinkedIn can only confirm that a LinkedIn profile is yours.</T>
+                <T variant="body">LinkedIn&apos;s public API does not share your connections with apps. Sign in with LinkedIn can only confirm that a LinkedIn profile is yours.</T>
                 {list.data?.env.linkedinOAuth ? <Button title="Verify my LinkedIn profile" onPress={() => setError('OAuth verification is wired on the server but not enabled in this build.')} /> : <Notice>Not configured on this deployment (LINKEDIN_CLIENT_ID is missing). The export importer works without it.</Notice>}
               </Card>
             ) : null}

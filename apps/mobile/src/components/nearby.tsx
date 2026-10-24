@@ -1,5 +1,5 @@
 import { MoreHorizontal } from 'lucide-react-native';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing, Modal, Pressable, View } from 'react-native';
 import Svg, { Circle, Text as SvgText } from 'react-native-svg';
 
@@ -28,7 +28,7 @@ export function useReduceMotion() {
 export function NearbyDot({ state }: { state: 'on' | 'paused' | 'off' }) {
   const { colors, motion } = useTheme();
   const reduce = useReduceMotion();
-  const scale = useRef(new Animated.Value(1)).current;
+  const [scale] = useState(() => new Animated.Value(1));
   useEffect(() => {
     if (state !== 'on' || reduce) { scale.setValue(1); return; }
     const loop = Animated.loop(Animated.sequence([
@@ -93,6 +93,8 @@ export function NearbyRings({ matchBands, radiusM }: { matchBands: MatchPayload[
   );
 }
 
+const announcedIds = new Set<string>();
+
 export interface NearbyMatchCardProps {
   match: MatchPayload;
   starter?: string;
@@ -108,7 +110,7 @@ export interface NearbyMatchCardProps {
 export function NearbyMatchCard({ match, starter, onRequestIntro, onDismiss, onMute, onBlock, onReport, announce }: NearbyMatchCardProps) {
   const { colors, space } = useTheme();
   const [menu, setMenu] = useState(false);
-  useEffect(() => { if (announce) haptic.success(); }, [announce]);
+  useEffect(() => { if (announce && !announcedIds.has(match.event_id)) { announcedIds.add(match.event_id); haptic.success(); } }, [announce, match.event_id]);
   const p = match.profile;
   const shared = [...match.shared_skills, ...match.shared_interests];
   const sentence = `Also works on ${match.shared_skills.join(', ') || 'similar things'}${match.shared_interests.length ? ` and is into ${match.shared_interests.join(', ')}` : ''}.`;

@@ -138,7 +138,7 @@ export default function NewNote() {
           <>
             <View style={{ marginTop: space[2] }}>
               <T variant="title">Bridge found</T>
-              <T variant="body" color="inkSoft">Uncheck anything that isn't right. {found.mode === 'llm' ? 'Names and skills were checked by the deterministic extractor first.' : 'Found with keyword rules, not AI.'}</T>
+              <T variant="body" color="inkSoft">Uncheck anything that isn&apos;t right. {found.mode === 'llm' ? 'Names and skills were checked by the deterministic extractor first.' : 'Found with keyword rules, not AI.'}</T>
             </View>
             <Card padded={false}>
               {found.people.length === 0 ? <View style={{ padding: space[3] }}><T variant="body">No names found. The note is saved on its own{contactId ? ' and attached to this card' : ''}.</T></View> : null}

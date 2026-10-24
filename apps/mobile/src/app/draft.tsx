@@ -4,7 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Linking, Platform, View } from 'react-native';
 
-import { Button, Card, Field, Flag, Loading, Notice, Row, Screen, ScreenTitle, Segmented, T, TopBar } from '@/components';
+import { Button, Card, Field, Flag, Loading, Notice, Row, Screen, ScreenTitle, Segmented, TopBar } from '@/components';
 import { useTheme } from '@/constants/theme';
 import { errorMessage } from '@/lib/api';
 import { RELATIONSHIP_LABEL } from '@/lib/relationship';

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { PanResponder, View, type LayoutChangeEvent } from 'react-native';
+import { View, type LayoutChangeEvent } from 'react-native';
 
 import { T } from '@/components/text';
 import { useTheme } from '@/constants/theme';
@@ -33,15 +33,8 @@ export function AZRail({ available, current, onLetter }: { available: Set<string
     }
     if (l !== last.current) { last.current = l; haptic.selection(); onLetter(l); }
   };
-  const pan = useRef(PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
-    onMoveShouldSetPanResponder: () => true,
-    onPanResponderGrant: (e) => pick(e.nativeEvent.locationY),
-    onPanResponderMove: (e) => pick(e.nativeEvent.locationY),
-    onPanResponderRelease: () => { last.current = null; },
-  })).current;
   return (
-    <View {...pan.panHandlers} accessibilityRole="adjustable" accessibilityLabel="Jump to letter" onLayout={(e: LayoutChangeEvent) => setHeight(e.nativeEvent.layout.height)} style={{ width: sizes.touch, alignItems: 'center', alignSelf: 'stretch', justifyContent: 'center' }}>
+    <View onTouchStart={(e) => pick(e.nativeEvent.locationY)} onTouchMove={(e) => pick(e.nativeEvent.locationY)} onTouchEnd={() => { last.current = null; }} accessibilityRole="adjustable" accessibilityLabel="Jump to letter" onLayout={(e: LayoutChangeEvent) => setHeight(e.nativeEvent.layout.height)} style={{ width: sizes.touch, alignItems: 'center', alignSelf: 'stretch', justifyContent: 'center' }}>
       {LETTERS.map((l) => {
         const has = available.has(l); const cur = l === current;
         return <View key={l} style={{ height: 15, width: 18, alignItems: 'center', justifyContent: 'center', borderRadius: 4, backgroundColor: cur ? colors.action : 'transparent' }}><T style={{ fontFamily: fonts.uiMedium, fontSize: 10, lineHeight: 12, color: cur ? colors.onAction : has ? colors.inkSoft : colors.inkFaint, opacity: has ? 1 : 0.4 }}>{l}</T></View>;

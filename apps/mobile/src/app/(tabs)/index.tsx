@@ -22,6 +22,7 @@ export default function Home() {
   const { profile } = useSession();
   const nearbyOn = useNearbyOn();
   const [q, setQ] = useState('');
+  const [now] = useState(() => Date.now());
   const [demoBusy, setDemoBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const home = useAsync(async () => {
@@ -36,12 +37,12 @@ export default function Home() {
   useFocusEffect(useCallback(() => { reload(); }, [reload]));
 
   const first = profile?.display_name?.split(' ')[0] ?? 'there';
-  const today = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+  const today = new Date(now).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
   const submit = () => q.trim() && router.push({ pathname: '/ask', params: { q: q.trim() } });
   const n = home.data?.contacts ?? 0;
   const plan = home.data?.goal?.plan;
   const filled = plan?.roles.filter((r) => r.filled).length ?? 0;
-  const dueLabel = (d: string) => { const diff = Math.round((new Date(d).getTime() - Date.now()) / 86_400_000); return diff <= 0 ? 'Today' : diff === 1 ? 'Tomorrow' : `In ${diff} days`; };
+  const dueLabel = (d: string) => { const diff = Math.round((new Date(d).getTime() - now) / 86_400_000); return diff <= 0 ? 'Today' : diff === 1 ? 'Tomorrow' : `In ${diff} days`; };
 
   return (
     <Screen contentStyle={{ paddingTop: space[6] }}>
@@ -105,7 +106,7 @@ export default function Home() {
               </Pressable>
               <View style={{ flex: 1 }}>
                 <T variant="body">{r.title}</T>
-                <T variant="caption" style={{ color: new Date(r.due_at).getTime() <= Date.now() ? colors.cautionInk : colors.inkSoft }}>{dueLabel(r.due_at)}</T>
+                <T variant="caption" style={{ color: new Date(r.due_at).getTime() <= now ? colors.cautionInk : colors.inkSoft }}>{dueLabel(r.due_at)}</T>
               </View>
               <Button variant="ghost" size="sm" title="Done" onPress={async () => { await supabase.from('reminders').update({ done_at: new Date().toISOString() }).eq('id', r.id); reload(); }} />
             </View>
