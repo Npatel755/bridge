@@ -131,3 +131,17 @@ export const STOPWORDS = new Set(
     ' ',
   ),
 );
+
+const EMAIL_RE = /^[^\s@?&#%,;:<>()[\]\\"]+@[^\s@?&#%,;:<>()[\]\\"]+\.[A-Za-z0-9-]{2,}$/;
+
+/** Plain address or '' (rejects query/fragment characters that would smuggle cc/bcc into a mailto:). */
+export function safeEmail(email?: string | null): string {
+  const e = (email ?? '').trim();
+  return EMAIL_RE.test(e) ? e.toLowerCase() : '';
+}
+
+/** Digits with an optional leading +, or '' (sms: targets cannot carry extra recipients or params). */
+export function safePhone(phone?: string | null): string {
+  const p = (phone ?? '').replace(/[\s().-]/g, '');
+  return /^\+?\d{3,20}$/.test(p) ? p : '';
+}

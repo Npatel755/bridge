@@ -1,3 +1,4 @@
+import { safeEmail, safePhone } from './normalize.ts';
 import type { Route } from './ask.ts';
 
 export interface OutreachInput {
@@ -56,9 +57,10 @@ export function draftOutreach(input: OutreachInput): OutreachDraft {
 }
 
 export function mailtoUrl(draft: OutreachDraft, email?: string | null): string {
-  return `mailto:${email ?? ''}?subject=${encodeURIComponent(draft.subject)}&body=${encodeURIComponent(draft.body)}`;
+  const to = safeEmail(email);
+  return `mailto:${to ? encodeURIComponent(to).replace('%40', '@') : ''}?subject=${encodeURIComponent(draft.subject)}&body=${encodeURIComponent(draft.body)}`;
 }
 
 export function smsUrl(draft: OutreachDraft, phone?: string | null): string {
-  return `sms:${phone ?? ''}?&body=${encodeURIComponent(draft.body)}`;
+  return `sms:${safePhone(phone)}?&body=${encodeURIComponent(draft.body)}`;
 }

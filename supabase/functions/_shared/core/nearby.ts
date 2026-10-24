@@ -2,6 +2,8 @@
 
 export const NEARBY_DEFAULTS = {
   maxSampleAgeSec: 120,
+  /** Samples dated slightly in the future (device clock drift) are still accepted; beyond this they are rejected. */
+  clockSkewSec: 30,
   maxAccuracyM: 50,
   radiusM: 100,
   radiusOptions: [50, 100, 250] as const,
@@ -31,6 +33,7 @@ export interface NearbyParticipant {
 }
 
 export type IneligibleReason =
+  | 'invalid_input'
   | 'disabled'
   | 'session_expired'
   | 'no_location'
@@ -94,16 +97,24 @@ export function evaluatePair(
   const sharedInterests = intersect(a.interests, b.interests);
   const relevance = sharedSkills.length + sharedInterests.length;
 
+  // Every gate is written to fail closed: NaN, non-numeric, negative or future-dated values never pass.
+  const now = ctx.now.getTime();
   for (const p of [a, b]) {
+    if (!(Number.isFinite(p.radiusM) && p.radiusM > 0 && Number.isFinite(p.minRelevance))) reasons.push('invalid_input');
     if (!p.enabled) reasons.push('disabled');
-    else if (p.sessionExpiresAt && Date.parse(p.sessionExpiresAt) <= ctx.now.getTime()) reasons.push('session_expired');
+    else if (p.sessionExpiresAt !== null && !(Date.parse(p.sessionExpiresAt) > now)) reasons.push('session_expired');
     if (!p.sample) reasons.push('no_location');
-    else if ((ctx.now.getTime() - Date.parse(p.sample.recordedAt)) / 1000 > cfg.maxSampleAgeSec) reasons.push('stale_location');
+    else {
+      const { lat, lng, accuracyM } = p.sample;
+      if (!(Number.isFinite(lat) && Math.abs(lat) <= 90 && Number.isFinite(lng) && Math.abs(lng) <= 180 && Number.isFinite(accuracyM) && accuracyM >= 0)) reasons.push('invalid_input');
+      const ageSec = (now - Date.parse(p.sample.recordedAt)) / 1000;
+      if (!(ageSec >= -cfg.clockSkewSec && ageSec <= cfg.maxSampleAgeSec)) reasons.push('stale_location');
+    }
   }
   if (a.blocked.includes(b.userId) || b.blocked.includes(a.userId)) reasons.push('blocked');
   if (sharedSkills.length < cfg.minSharedSkills) reasons.push('no_skill_overlap');
   if (sharedInterests.length < cfg.minSharedInterests) reasons.push('no_interest_overlap');
-  if (relevance < Math.max(a.minRelevance, b.minRelevance)) reasons.push('below_threshold');
+  if (!(relevance >= Math.max(a.minRelevance, b.minRelevance))) reasons.push('below_threshold');
   for (const p of [a, b]) {
     if (p.audience === 'existing_connections' && !ctx.areConnected) reasons.push('audience');
     if (p.audience === 'new_people' && ctx.areConnected) reasons.push('audience');
@@ -113,7 +124,7 @@ export function evaluatePair(
   if (a.sample && b.sample) {
     distanceM = haversineM(a.sample, b.sample);
     if (!accuracyAdequate(a.sample.accuracyM, b.sample.accuracyM, radiusM, cfg.maxAccuracyM)) reasons.push('low_accuracy');
-    else if (distanceM > radiusM) reasons.push('out_of_range');
+    else if (!(distanceM <= radiusM)) reasons.push('out_of_range');
   }
   const unique = [...new Set(reasons)];
   return {

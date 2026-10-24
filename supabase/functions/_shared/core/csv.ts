@@ -1,8 +1,15 @@
-import { cleanText } from './normalize.ts';
+import { cleanText, safeEmail, safePhone } from './normalize.ts';
+
+export const CSV_LIMITS = { maxBytes: 5 * 1024 * 1024, maxRows: 30_000 } as const;
 
 /** RFC 4180-ish CSV parser (quotes, escaped quotes, CRLF, embedded newlines). */
 export function parseCsv(text: string): string[][] {
+  if (text.length > CSV_LIMITS.maxBytes) throw new Error(`CSV is larger than ${CSV_LIMITS.maxBytes / 1024 / 1024} MB. Split it into smaller files.`);
   const rows: string[][] = [];
+  const pushRow = (r: string[]) => {
+    if (rows.length >= CSV_LIMITS.maxRows) throw new Error(`CSV has more than ${CSV_LIMITS.maxRows.toLocaleString()} rows. Split it into smaller files.`);
+    rows.push(r);
+  };
   let row: string[] = [];
   let field = '';
   let quoted = false;
@@ -25,14 +32,14 @@ export function parseCsv(text: string): string[][] {
     } else if (ch === '\n' || ch === '\r') {
       if (ch === '\r' && src[i + 1] === '\n') i++;
       row.push(field);
-      rows.push(row);
+      pushRow(row);
       row = [];
       field = '';
     } else field += ch;
   }
   if (field !== '' || row.length) {
     row.push(field);
-    rows.push(row);
+    pushRow(row);
   }
   return rows.filter((r) => r.some((c) => c.trim() !== ''));
 }
@@ -124,15 +131,19 @@ export function mapRows(rows: string[][], mapping: ColumnMapping): MappedContact
     const name = get(r, 'fullName') ?? [get(r, 'firstName'), get(r, 'lastName')].filter(Boolean).join(' ');
     if (!name) return;
     const warnings: string[] = [];
-    const email = get(r, 'email');
-    if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) warnings.push('Email looks invalid and will be skipped.');
+    const rawEmail = get(r, 'email');
+    const email = safeEmail(rawEmail) || null;
+    if (rawEmail && !email) warnings.push('Email looks invalid and will be skipped.');
+    const rawPhone = get(r, 'phone');
+    const phone = safePhone(rawPhone) || null;
+    if (rawPhone && !phone) warnings.push('Phone number looks invalid and will be skipped.');
     const url = get(r, 'profileUrl');
     if (url && !/^https?:\/\//i.test(url)) warnings.push('Profile URL is not an http(s) link and will be skipped.');
     out.push({
       rowIndex,
       displayName: name.slice(0, 120),
-      email: email && warnings.length === 0 ? email.toLowerCase() : email && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) ? email.toLowerCase() : null,
-      phone: get(r, 'phone'),
+      email,
+      phone,
       company: get(r, 'company'),
       title: get(r, 'title'),
       profileUrl: url && /^https?:\/\//i.test(url) ? url : null,
@@ -177,40 +188,42 @@ export function normalizeUrl(url: string | null | undefined): string | null {
 }
 
 export function detectDuplicates(rows: MappedContact[], existing: ExistingContactKey[]): DuplicateCandidate[] {
+  type Ref = { existingId: string | null; otherRowIndex: number | null; company: string | null };
+  const byEmail = new Map<string, Ref>();
+  const byUrl = new Map<string, Ref>();
+  const byName = new Map<string, Ref[]>();
+  const index = (key: { email?: string | null; profileUrl?: string | null; displayName: string; company?: string | null }, ref: Ref) => {
+    const email = key.email?.toLowerCase();
+    if (email && !byEmail.has(email)) byEmail.set(email, ref);
+    const url = normalizeUrl(key.profileUrl);
+    if (url && !byUrl.has(url)) byUrl.set(url, ref);
+    const name = normalizeName(key.displayName);
+    if (name) {
+      const list = byName.get(name) ?? [];
+      list.push(ref);
+      byName.set(name, list);
+    }
+  };
+  for (const ex of existing) index(ex, { existingId: ex.id, otherRowIndex: null, company: ex.company ? cleanText(ex.company) : null });
+
   const out: DuplicateCandidate[] = [];
-  const seenRows: MappedContact[] = [];
   for (const row of rows) {
-    const name = normalizeName(row.displayName);
-    const url = normalizeUrl(row.profileUrl);
     const company = row.company ? cleanText(row.company) : null;
-    const check = (other: { email?: string | null; profileUrl?: string | null; displayName: string; company?: string | null }): DuplicateKind | null => {
-      if (row.email && other.email && row.email === other.email.toLowerCase()) return 'email';
-      if (url && normalizeUrl(other.profileUrl) === url) return 'profile_url';
-      if (name && normalizeName(other.displayName) === name) {
-        if (company && other.company && cleanText(other.company) === company) return 'name_and_company';
-        return 'name_only';
-      }
-      return null;
-    };
-    let found = false;
-    for (const ex of existing) {
-      const kind = check(ex);
-      if (kind) {
-        out.push({ rowIndex: row.rowIndex, existingId: ex.id, otherRowIndex: null, kind, strength: kind === 'name_only' ? 'weak' : 'strong' });
-        found = true;
-        break;
-      }
+    let hit: { ref: Ref; kind: DuplicateKind } | null = null;
+    const emailRef = row.email ? byEmail.get(row.email) : undefined;
+    const url = normalizeUrl(row.profileUrl);
+    const urlRef = url ? byUrl.get(url) : undefined;
+    if (emailRef) hit = { ref: emailRef, kind: 'email' };
+    else if (urlRef) hit = { ref: urlRef, kind: 'profile_url' };
+    else {
+      // Existing cards win over earlier rows (indexed first); the kind depends on the chosen candidate's company.
+      const cand = byName.get(normalizeName(row.displayName))?.[0];
+      if (cand) hit = { ref: cand, kind: company && cand.company === company ? 'name_and_company' : 'name_only' };
     }
-    if (!found) {
-      for (const prev of seenRows) {
-        const kind = check(prev);
-        if (kind) {
-          out.push({ rowIndex: row.rowIndex, existingId: null, otherRowIndex: prev.rowIndex, kind, strength: kind === 'name_only' ? 'weak' : 'strong' });
-          break;
-        }
-      }
+    if (hit) {
+      out.push({ rowIndex: row.rowIndex, existingId: hit.ref.existingId, otherRowIndex: hit.ref.otherRowIndex, kind: hit.kind, strength: hit.kind === 'name_only' ? 'weak' : 'strong' });
     }
-    seenRows.push(row);
+    index(row, { existingId: null, otherRowIndex: row.rowIndex, company });
   }
   return out;
 }
