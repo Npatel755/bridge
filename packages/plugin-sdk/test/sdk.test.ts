@@ -66,7 +66,7 @@ describe('linkedin export connector', () => {
     expect(people[0].suggestedTags.map((t: any) => t.tag)).toContain('product-management');
     const evil = people[3];
     expect(evil.sourceUrl).toBeUndefined(); // javascript: dropped
-    expect(evil.email).toBe('not-an-email'); // kept as text, flagged downstream by core csv warnings, never used as a claim
+    expect(evil.email).toBeUndefined(); // invalid email dropped by core csv mapper
     expect(evil.suggestedTags.map((t: any) => t.tag)).not.toContain('expert');
     expect(res.warnings!.some((w) => w.includes('skipped'))).toBe(true);
   });
