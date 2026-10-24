@@ -2,6 +2,8 @@ import type { Session } from '@supabase/supabase-js';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
 import { AppState, Platform } from 'react-native';
 
+import { stopCollecting } from '@/lib/nearby';
+import { setNearbyOn } from '@/lib/nearby/state';
 import { supabase } from '@/lib/supabase';
 
 export interface Profile {
@@ -87,7 +89,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
 
   const value = useMemo<SessionState>(() => ({
     session, profile: currentProfile, loading, refreshProfile,
-    signOut: async () => { await supabase.auth.signOut(); },
+    signOut: async () => { setNearbyOn(false); await stopCollecting().catch(() => {}); await supabase.auth.signOut(); },
   }), [session, currentProfile, loading, refreshProfile]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

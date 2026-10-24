@@ -11,6 +11,7 @@ import { useSession, type Profile } from '@/lib/session';
 import { supabase } from '@/lib/supabase';
 
 const TOTAL = 6;
+const asListInit = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
 const LEVELS = ['Learning', 'Working', 'Expert'] as const;
 const COMMON_SKILLS = ['Embedded systems', 'Computer vision', 'Robotics', 'Hardware prototyping', 'Product design', 'UX research', 'Python', 'TypeScript', 'Mobile apps', 'Data science', 'Marketing', 'Manufacturing', 'Fundraising', 'Mechanical engineering', 'Firmware'];
 const COMMON_INTERESTS = ['Cycling', 'Climbing', 'Startups', 'Open source', 'Music', 'Sustainability', 'Gaming', 'Photography', 'Running', 'Cooking'];
@@ -30,6 +31,7 @@ export default function Onboarding() {
   const [form, setForm] = useState<Partial<Profile>>(() => profile ?? {});
   const [tags, setTags] = useState<TagRowT[]>([]);
   const [custom, setCustom] = useState('');
+  const [langText, setLangText] = useState(() => asListInit(profile?.languages).join(', '));
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [nearbyMsg, setNearbyMsg] = useState<string | null>(null);
@@ -138,7 +140,7 @@ export default function Onboarding() {
           <Field label="Working style" value={form.working_style ?? ''} onChangeText={(v) => set('working_style', v)} placeholder="Evenings and weekends, async first…" />
           <Field label="Availability" value={form.availability ?? ''} onChangeText={(v) => set('availability', v)} placeholder="A few hours a week" />
           <Field label="Preferred contact" value={form.contact_method ?? ''} onChangeText={(v) => set('contact_method', v)} placeholder="Email, Signal, LinkedIn message" />
-          <Field label="Languages" value={asList(form.languages).join(', ')} onChangeText={(v) => set('languages', v.split(',').map((s) => s.trim()).filter(Boolean))} placeholder="English, Spanish" />
+          <Field label="Languages" value={langText} onChangeText={(v) => { setLangText(v); set('languages', v.split(',').map((s) => s.trim()).filter(Boolean)); }} placeholder="English, Spanish" />
           <T variant="label" color="inkSoft">Networking</T>
           <TagRow>{NETWORKING.map((c) => <Tag key={c} label={c} state={asList(form.networking_prefs).includes(c) ? 'selected' : 'stated'} onPress={() => toggleList('networking_prefs', c)} />)}</TagRow>
         </Card>
