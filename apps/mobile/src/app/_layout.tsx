@@ -1,6 +1,6 @@
 import { InterTight_400Regular, InterTight_500Medium } from '@expo-google-fonts/inter-tight';
 import { Literata_400Regular, Literata_500Medium, useFonts } from '@expo-google-fonts/literata';
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { DarkTheme, DefaultTheme, router, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
@@ -32,7 +32,8 @@ export default function RootLayout() {
 
 function Navigation() {
   const scheme = useColorScheme();
-  const { session, loading } = useSession();
+  const { session, loading, recovering } = useSession();
+  useEffect(() => { if (!loading && session && recovering) router.replace('/reset-password'); }, [loading, session, recovering]);
   const colors = scheme === 'dark' ? palette.dark : palette.light;
   const base = scheme === 'dark' ? DarkTheme : DefaultTheme;
   const theme = { ...base, colors: { ...base.colors, primary: colors.action, background: colors.paper, card: colors.card, text: colors.ink, border: colors.cardEdge } };
@@ -56,6 +57,7 @@ function Navigation() {
           <Stack.Screen name="plugins/index" />
           <Stack.Screen name="plugins/[id]" />
           <Stack.Screen name="settings" />
+          <Stack.Screen name="reset-password" />
         </Stack.Protected>
         <Stack.Protected guard={!session}>
           <Stack.Screen name="(auth)" />

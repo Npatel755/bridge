@@ -1,5 +1,7 @@
+import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
 import { useState } from 'react';
+import { Platform } from 'react-native';
 
 import { Button, Card, Field, Notice, Screen, ScreenTitle, TopBar } from '@/components';
 import { errorMessage } from '@/lib/api';
@@ -15,7 +17,7 @@ export default function Forgot() {
       <TopBar onBack={() => router.back()} />
       <Screen cta={<Button variant="primary" size="lg" title="Send reset link" loading={busy} disabled={!email} onPress={async () => {
         setBusy(true); setError(null);
-        try { const { error } = await supabase.auth.resetPasswordForEmail(email.trim()); if (error) throw error; setDone(true); } catch (e) { setError(errorMessage(e)); } finally { setBusy(false); }
+        try { const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: Platform.OS === 'web' ? `${window.location.origin}/reset-password` : Linking.createURL('/reset-password') }); if (error) throw error; setDone(true); } catch (e) { setError(errorMessage(e)); } finally { setBusy(false); }
       }} />}>
         <ScreenTitle title="Reset your password" caption="We will email you a link to choose a new one." />
         <Card>

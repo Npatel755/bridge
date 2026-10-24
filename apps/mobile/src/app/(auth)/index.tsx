@@ -6,6 +6,7 @@ import { Button, Card, Field, Notice, Row, Screen, ScreenTitle, T } from '@/comp
 import { useTheme } from '@/constants/theme';
 import { errorMessage } from '@/lib/api';
 import { signInDemo } from '@/lib/demo';
+import { signInWithGoogle } from '@/lib/oauth';
 import { isConfigured, supabase } from '@/lib/supabase';
 
 const googleEnabled = process.env.EXPO_PUBLIC_GOOGLE_AUTH_ENABLED === 'true';
@@ -36,7 +37,7 @@ export default function SignIn() {
           <Link href="/sign-up" asChild><Button variant="ghost" size="sm" title="Create account" /></Link>
           <Link href="/forgot" asChild><Button variant="ghost" size="sm" title="Forgot password" /></Link>
         </Row>
-        {googleEnabled ? <Button title="Continue with Google" loading={busy === 'google'} onPress={() => run('google', async () => { const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' }); if (error) throw error; })} /> : null}
+        {googleEnabled ? <Button title="Continue with Google" loading={busy === 'google'} onPress={() => run('google', signInWithGoogle)} /> : null}
       </Card>
       <View style={{ gap: space[2], marginTop: space[3] }}>
         <T variant="label" color="inkSoft">Try the demo</T>

@@ -37,15 +37,19 @@ interface SessionState {
   loading: boolean;
   refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
+  /** True after the user opened a password-recovery link; cleared once a new password is saved. */
+  recovering: boolean;
+  clearRecovery: () => void;
 }
 
-const Ctx = createContext<SessionState>({ session: null, profile: null, loading: true, refreshProfile: async () => {}, signOut: async () => {} });
+const Ctx = createContext<SessionState>({ session: null, profile: null, loading: true, refreshProfile: async () => {}, signOut: async () => {}, recovering: false, clearRecovery: () => {} });
 
 export function SessionProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<Session | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [profileFor, setProfileFor] = useState<string | null>(null);
+  const [recovering, setRecovering] = useState(false);
   const userId = session?.user.id ?? null;
 
   const refreshProfile = useCallback(async () => {
@@ -55,7 +59,11 @@ export function SessionProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => { setSession(data.session); setAuthReady(true); });
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
+      setSession(s);
+      if (event === 'PASSWORD_RECOVERY') setRecovering(true);
+      if (event === 'SIGNED_OUT') setRecovering(false);
+    });
     return () => sub.subscription.unsubscribe();
   }, []);
 
@@ -90,9 +98,10 @@ export function SessionProvider({ children }: PropsWithChildren) {
   }, []);
 
   const value = useMemo<SessionState>(() => ({
-    session, profile: currentProfile, loading, refreshProfile,
+    session, profile: currentProfile, loading, refreshProfile, recovering,
+    clearRecovery: () => setRecovering(false),
     signOut: async () => { setNearbyOn(false); await stopCollecting().catch(() => {}); await supabase.auth.signOut(); },
-  }), [session, currentProfile, loading, refreshProfile]);
+  }), [session, currentProfile, loading, refreshProfile, recovering]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
