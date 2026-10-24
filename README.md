@@ -37,6 +37,8 @@ On a physical phone, `127.0.0.1` points at the phone. Put your computer's LAN IP
 
 Optional keys (all in `supabase/functions/.env`): `LLM_API_KEY` enables LLM-written explanations and real embeddings (results stay grounded in your cards; the UI labels the mode). `LINKEDIN_CLIENT_ID/SECRET` enable "Sign in with LinkedIn" profile verification. Google sign-in: configure the provider in Supabase and set `EXPO_PUBLIC_GOOGLE_AUTH_ENABLED=true`.
 
+Want it on a phone without Expo Go? See [docs/SIDELOAD.md](docs/SIDELOAD.md): host the backend on Supabase, build an unsigned IPA with the included GitHub Actions workflow, and sideload it with Sideloadly.
+
 ## Checks
 
 ```bash
