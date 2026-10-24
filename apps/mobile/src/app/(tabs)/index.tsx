@@ -55,12 +55,12 @@ export default function Home() {
         <Group>{EXAMPLES.map((e) => <Row key={e} title={e} titleVariant="note" chevron onPress={() => submit(e)} />)}</Group>
       </Section>
 
-      {profile?.is_demo && home.data && n === 0 ? (
-        <Section label="Demo account">
+      {home.data && n === 0 ? (
+        <Section label={profile?.is_demo ? 'Demo account' : 'Try it with sample data'}>
           <Stack>
-            <EmptyRow title="Load about 40 fictional cards, notes, plugin imports and nearby personas to explore every feature." />
+            <EmptyRow title="Load about 40 fictional cards, notes, plugin imports and nearby personas to explore every feature. Clearly labeled, removable any time from your profile." />
             {msg ? <Notice tone="confirmInk">{msg}</Notice> : null}
-            <Button size="sm" variant="primary" fullWidth label={demoBusy ? 'Loading…' : 'Load the demo network'} disabled={demoBusy} onPress={async () => { setDemoBusy(true); try { const r = await loadDemoNetwork(); setMsg(`Loaded ${r.contacts} cards and ${r.notes} notes.`); reload(); } catch (e) { setMsg(errorMessage(e)); } finally { setDemoBusy(false); } }} />
+            <Button size="sm" variant="primary" fullWidth label={demoBusy ? 'Loading…' : 'Load sample network'} disabled={demoBusy} onPress={async () => { setDemoBusy(true); try { const r = await loadDemoNetwork(); setMsg(`Loaded ${r.contacts} cards and ${r.notes} notes.`); reload(); } catch (e) { setMsg(errorMessage(e)); } finally { setDemoBusy(false); } }} />
           </Stack>
         </Section>
       ) : null}

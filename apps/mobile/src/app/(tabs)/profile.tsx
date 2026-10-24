@@ -89,17 +89,17 @@ export default function Profile() {
         </Group>
       </Section>
 
-      {profile.is_demo ? (
-        <Section label="Demo account">
+      <>
+        <Section label={profile.is_demo ? 'Demo account' : 'Sample data (fictional)'}>
           <Stack>
             {msg ? <Notice tone="confirmInk">{msg}</Notice> : null}
             <Group>
-              <Row title="Reload demo network" titleVariant="label" subtitle={busy === 'load' ? 'Loading…' : 'About 40 fictional cards, notes and personas'} onPress={async () => { if (busy) return; setBusy('load'); try { await clearDemoData(); const r = await loadDemoNetwork(); setMsg(`Loaded ${r.contacts} cards and ${r.notes} notes.`); } catch (e) { setMsg(errorMessage(e)); } finally { setBusy(null); } }} />
-              <Row title="Clear demo data" titleVariant="label" subtitle={busy === 'clear' ? 'Clearing…' : 'Removes the fictional cards'} onPress={async () => { if (busy) return; setBusy('clear'); try { await clearDemoData(); setMsg('Demo cards removed.'); } catch (e) { setMsg(errorMessage(e)); } finally { setBusy(null); } }} />
+              <Row title={profile.is_demo ? 'Reload demo network' : 'Load sample network'} titleVariant="label" subtitle={busy === 'load' ? 'Loading…' : 'About 40 fictional cards, notes and personas. Your own cards are untouched.'} onPress={async () => { if (busy) return; setBusy('load'); try { await clearDemoData(); const r = await loadDemoNetwork(); setMsg(`Loaded ${r.contacts} cards and ${r.notes} notes.`); } catch (e) { setMsg(errorMessage(e)); } finally { setBusy(null); } }} />
+              <Row title={profile.is_demo ? 'Clear demo data' : 'Remove sample data'} titleVariant="label" subtitle={busy === 'clear' ? 'Clearing…' : 'Removes only the fictional cards'} onPress={async () => { if (busy) return; setBusy('clear'); try { await clearDemoData(); setMsg('Demo cards removed.'); } catch (e) { setMsg(errorMessage(e)); } finally { setBusy(null); } }} />
             </Group>
           </Stack>
         </Section>
-      ) : null}
+      </>
       <Button size="sm" fullWidth label="Sign out" onPress={signOut} />
     </Screen>
   );
