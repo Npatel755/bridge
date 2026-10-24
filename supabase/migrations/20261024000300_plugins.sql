@@ -105,7 +105,7 @@ create table public.import_records (
   review_status text not null default 'pending' check (review_status in ('pending','accepted','rejected','merged','ambiguous')),
   contact_id uuid,
   created_at timestamptz not null default now(),
-  foreign key (contact_id, owner_id) references public.contacts(id, owner_id) on delete set null
+  foreign key (contact_id, owner_id) references public.contacts(id, owner_id) on delete set null (contact_id)
 );
 create index import_records_owner on public.import_records(owner_id, plugin_id);
 create index import_records_contact on public.import_records(contact_id);

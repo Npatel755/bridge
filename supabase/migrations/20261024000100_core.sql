@@ -230,7 +230,7 @@ create table public.outreach_drafts (
   status text not null default 'draft' check (status in ('draft','copied','sent_manually','discarded')),
   created_at timestamptz not null default now(),
   foreign key (contact_id, owner_id) references public.contacts(id, owner_id) on delete cascade,
-  foreign key (via_contact_id, owner_id) references public.contacts(id, owner_id) on delete set null
+  foreign key (via_contact_id, owner_id) references public.contacts(id, owner_id) on delete set null (via_contact_id)
 );
 
 -- Embeddings live in their own table; never exposed to other users (RLS by owner).

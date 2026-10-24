@@ -90,7 +90,7 @@ begin
   if me is null then raise exception 'not authenticated' using errcode = '42501'; end if;
   perform public.clear_demo_data();
   create temp table if not exists _keymap (key text primary key, id uuid) on commit drop;
-  delete from _keymap;
+  delete from _keymap where true;
   for r in select * from demo.contacts loop
     insert into public.contacts (owner_id, name, first_name, last_name, email, phone, headline, company, school, location, how_met, met_at,
       relationship, relationship_source, relationship_status, last_interaction_at, links, archived, is_demo)

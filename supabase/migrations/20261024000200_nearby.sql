@@ -125,7 +125,13 @@ alter table public.reports enable row level security;
 create policy reports_owner on public.reports for all to authenticated using (reporter_id = (select auth.uid())) with check (reporter_id = (select auth.uid()));
 alter table public.intro_requests enable row level security;
 create policy intro_requests_parties_select on public.intro_requests for select to authenticated using (from_id = (select auth.uid()) or to_id = (select auth.uid()));
-create policy intro_requests_from_insert on public.intro_requests for insert to authenticated with check (from_id = (select auth.uid()) and not exists (select 1 from public.blocks b where (b.blocker_id = to_id and b.blocked_id = from_id) or (b.blocker_id = from_id and b.blocked_id = to_id)));
+create or replace function public.pair_blocked(a uuid, b uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.blocks where (blocker_id = a and blocked_id = b) or (blocker_id = b and blocked_id = a))
+$$;
+revoke all on function public.pair_blocked from public, anon;
+grant execute on function public.pair_blocked to authenticated;
+create policy intro_requests_from_insert on public.intro_requests for insert to authenticated with check (from_id = (select auth.uid()) and not public.pair_blocked(from_id, to_id));
 create policy intro_requests_parties_update on public.intro_requests for update to authenticated using (from_id = (select auth.uid()) or to_id = (select auth.uid()));
 alter table public.notification_state enable row level security;
 create policy notification_state_owner on public.notification_state for all to authenticated using (owner_id = (select auth.uid())) with check (owner_id = (select auth.uid()));
@@ -138,7 +144,7 @@ create or replace function public.distance_band(d double precision) returns text
 language sql immutable as $$ select case when d <= 25 then 'very_close' when d <= 75 then 'close' else 'nearby' end $$;
 
 create or replace function private.is_blocked(a uuid, b uuid) returns boolean
-language sql stable as $$
+language sql stable security definer set search_path = public as $$
   select exists (select 1 from public.blocks where (blocker_id = a and blocked_id = b) or (blocker_id = b and blocked_id = a))
 $$;
 

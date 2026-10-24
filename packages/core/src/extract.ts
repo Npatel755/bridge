@@ -44,7 +44,7 @@ export interface NoteExtraction {
 }
 
 const NOT_NAMES = new Set(
-  'I Me My We Our He She They Them His Her Their It Its The A An And But Or So Then Met Meet Meeting Talked Spoke Chatted Saw Today Yesterday Tomorrow Monday Tuesday Wednesday Thursday Friday Saturday Sunday January February March April May June July August September October November December Also Both Who Works Knows Interested Looking Wants Great Good Nice Follow Followup Next Call Email Coffee Lunch Dinner At In On With From Hackathon Demo Day Conference Meetup This That There Here Should Could Would Will Need'.split(
+  'I Me My We Our He She They Them His Her Their It Its The A An And But Or So Then Met Meet Meeting Talked Spoke Chatted Saw Today Yesterday Tomorrow Monday Tuesday Wednesday Thursday Friday Saturday Sunday January February March April May June July August September October November December Also Both Who Works Knows Interested Looking Wants Great Good Nice Follow Followup Next Call Email Coffee Lunch Dinner At In On With From Hackathon Demo Day Conference Meetup This That There Here Should Could Would Will Need Ignore Please Note Notes Remember Mark Make Add Remind Send Ask Tell Set Update Check Important Todo Later Thanks Hi Hello Yes No Ok Okay'.split(
     ' ',
   ),
 );
@@ -67,6 +67,8 @@ function findNameMentions(sentence: string, offset: number): Mention[] {
     const words = m[1].split(/\s+/).filter((w) => !NOT_NAMES.has(w));
     if (!words.length) continue;
     const name = words.join(' ');
+    // a lone capitalized vocabulary term ("Rust", "Figma") is a skill, not a person
+    if (words.length === 1 && findTagMentions(name).some((t) => t.phrase.toLowerCase() === name.toLowerCase())) continue;
     const before = sentence.slice(0, m.index);
     if (/\b(at|for|from)\s+$/i.test(before) || ORG_SUFFIX.test(sentence.slice(m.index, m.index + m[1].length + 15))) continue;
     out.push({ name, index: offset + m.index });
