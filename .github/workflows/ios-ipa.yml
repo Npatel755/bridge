@@ -45,12 +45,14 @@ jobs:
       - name: Resolve Swift packages
         working-directory: apps/mobile
         run: |
+          mkdir -p build
           xcodebuild -resolvePackageDependencies -workspace ios/Bridge.xcworkspace -scheme Bridge \
             -clonedSourcePackagesDirPath "$PWD/build/SourcePackages" -skipPackagePluginValidation -skipMacroValidation 2>&1 | tail -40
       - name: Archive without code signing
         working-directory: apps/mobile
         run: |
           set +e
+          mkdir -p build
           xcodebuild -workspace ios/Bridge.xcworkspace -scheme Bridge -configuration Release -sdk iphoneos \
             -archivePath "$PWD/build/Bridge.xcarchive" archive \
             -clonedSourcePackagesDirPath "$PWD/build/SourcePackages" -skipPackagePluginValidation -skipMacroValidation \
