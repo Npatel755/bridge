@@ -1,6 +1,6 @@
 import { ChevronLeft } from 'lucide-react-native';
 import type { PropsWithChildren, ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, Switch, TextInput, View, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, TextInput, type StyleProp, type TextInputProps, type ViewStyle, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/button';
@@ -15,10 +15,10 @@ export function Screen({ children, scroll = true, cta, style, contentStyle }: Pr
   const insets = useSafeAreaInsets();
   const inner = [styles.inner, { paddingHorizontal: sizes.phoneGutter, paddingTop: space[2], paddingBottom: space[8] + (cta ? 0 : insets.bottom), gap: space[3] }, contentStyle];
   return (
-    <View style={[styles.screen, { backgroundColor: colors.paper }, style]}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[styles.screen, { backgroundColor: colors.paper }, style]}>
       {scroll ? <ScrollView contentContainerStyle={inner} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">{children}</ScrollView> : <View style={[inner, { flex: 1 }]}>{children}</View>}
       {cta ? <View style={[styles.cta, { paddingHorizontal: sizes.phoneGutter, paddingBottom: Math.max(insets.bottom, space[3]), paddingTop: space[2], backgroundColor: colors.paper }]}>{cta}</View> : null}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

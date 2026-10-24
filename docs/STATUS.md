@@ -19,7 +19,8 @@
 - **No LLM key** was configured, so Ask/Team/Extract ran in the deterministic mode. The LLM path (explanations and embeddings) is implemented with the hash fallback and is labeled in the UI but untested against a provider.
 - **Voice:** web dictation uses the Web Speech API where the browser supports it. On native, recordings are captured with expo-audio but not transcribed (no speech service configured); the UI says so and points to keyboard dictation.
 - **LinkedIn:** only the export importer works end to end. "Sign in with LinkedIn" verification is scaffolded server-side and disabled without credentials. No scraping.
-- **Google sign-in** requires provider configuration; hidden otherwise.
+- **Google sign-in** requires provider configuration; hidden otherwise. Web redirects in-page; native opens the system auth sheet (`expo-web-browser`) and completes the exchange from the `bridge://` redirect. Neither path was exercised without provider credentials.
+- **Password recovery** sends a link that lands on `/reset-password` (web origin or `bridge://` on native); the new-password screen was verified on web only.
 - **Export on native** copies JSON to the clipboard (no file-sharing module added); web downloads a file.
 - Demo contacts and nearby personas are fictional. The web preview runs the same code via react-native-web, so native tab-bar and modal behaviors differ slightly.
 

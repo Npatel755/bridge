@@ -35,7 +35,9 @@ export default function Settings() {
   }
   async function deleteAccount() {
     setBusy('delete'); setError(null);
-    try { await api.deleteAccount(); await signOut(); } catch (e) { setError(errorMessage(e)); setBusy(null); }
+    try { await api.deleteAccount(); } catch (e) { setError(errorMessage(e)); setBusy(null); return; }
+    // The server-side user is gone; drop the local session even if the sign-out call itself fails.
+    try { await signOut(); } catch { await supabase.auth.signOut({ scope: 'local' }).catch(() => {}); }
   }
 
   return (
