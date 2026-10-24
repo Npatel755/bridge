@@ -1,7 +1,7 @@
-import { router } from 'expo-router';
 import { useState } from 'react';
 
-import { Button, Card, Field, Notice, Screen, ScreenTitle, TopBar } from '@/components';
+import { BText, Button, Field, Screen, ScreenHeader, Section } from '@/bridge-design-system';
+import { Back, Notice, Stack } from '@/components/shared';
 import { errorMessage } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 
@@ -23,18 +23,18 @@ export default function SignUp() {
   }
 
   return (
-    <>
-      <TopBar onBack={() => router.back()} />
-      <Screen cta={<Button variant="primary" size="lg" title="Create account" loading={busy} disabled={!name || !email || password.length < 8} onPress={submit} />}>
-        <ScreenTitle title="Create your account" caption="Your cards and notes stay private to you. Only the profile fields you mark as discoverable are ever shown to other people." />
-        <Card>
+    <Screen footer={<Button variant="primary" size="sm" fullWidth label={busy ? 'Creating…' : 'Create account'} disabled={busy || !name || !email || password.length < 8} onPress={submit} />}>
+      <ScreenHeader left={<Back />} title="Create your account" subtitle="Your cards and notes stay private to you. Only the profile fields you mark as discoverable are ever shown to other people." />
+      <Section label="Account">
+        <Stack>
           <Field label="Name" value={name} onChangeText={setName} autoComplete="name" placeholder="Your name" />
           <Field label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" autoComplete="email" placeholder="you@example.com" />
-          <Field label="Password" value={password} onChangeText={setPassword} secureTextEntry autoComplete="new-password" hint="At least 8 characters" />
-          {error ? <Notice>{error}</Notice> : null}
-          {sent ? <Notice tone="confirm">Check your email to confirm your address, then sign in.</Notice> : null}
-        </Card>
-      </Screen>
-    </>
+          <Field label="Password" value={password} onChangeText={setPassword} secureTextEntry autoComplete="new-password" placeholder="At least 8 characters" />
+          <BText variant="caption" color="inkFaint">At least 8 characters.</BText>
+          {error ? <Notice tone="dangerInk">{error}</Notice> : null}
+          {sent ? <Notice tone="confirmInk">Check your email to confirm your address, then sign in.</Notice> : null}
+        </Stack>
+      </Section>
+    </Screen>
   );
 }

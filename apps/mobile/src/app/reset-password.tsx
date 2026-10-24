@@ -1,7 +1,8 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 
-import { Button, Card, Field, Notice, Screen, ScreenTitle, TopBar } from '@/components';
+import { BText, Button, Field, Screen, ScreenHeader, Section } from '@/bridge-design-system';
+import { Notice, Stack } from '@/components/shared';
 import { errorMessage } from '@/lib/api';
 import { useSession } from '@/lib/session';
 import { supabase } from '@/lib/supabase';
@@ -26,17 +27,16 @@ export default function ResetPassword() {
   }
 
   return (
-    <>
-      <TopBar title="New password" />
-      <Screen cta={<Button variant="primary" size="lg" title="Save password" loading={busy} disabled={!ready} onPress={save} />}>
-        <ScreenTitle title="Choose a new password" caption="You opened a password reset link. Pick a new password of at least 8 characters to finish signing in." />
-        <Card>
+    <Screen footer={<Button variant="primary" size="sm" fullWidth label={busy ? 'Saving…' : 'Save password'} disabled={busy || !ready} onPress={save} />}>
+      <ScreenHeader title="Choose a new password" subtitle="You opened a password reset link. Pick a new password of at least 8 characters to finish signing in." right={<Button variant="ghost" size="sm" label="Skip for now" onPress={() => { clearRecovery(); router.replace('/'); }} />} />
+      <Section label="New password">
+        <Stack>
           <Field label="New password" value={password} onChangeText={setPassword} secureTextEntry autoCapitalize="none" autoComplete="new-password" textContentType="newPassword" />
-          <Field label="Repeat it" value={confirm} onChangeText={setConfirm} secureTextEntry autoCapitalize="none" autoComplete="new-password" textContentType="newPassword" hint={mismatch ? 'These do not match yet.' : undefined} />
-          {error ? <Notice>{error}</Notice> : null}
-        </Card>
-        <Button variant="ghost" title="Skip for now" onPress={() => { clearRecovery(); router.replace('/'); }} />
-      </Screen>
-    </>
+          <Field label="Repeat it" value={confirm} onChangeText={setConfirm} secureTextEntry autoCapitalize="none" autoComplete="new-password" textContentType="newPassword" />
+          {mismatch ? <BText variant="caption" color="cautionInk">These do not match yet.</BText> : null}
+          {error ? <Notice tone="dangerInk">{error}</Notice> : null}
+        </Stack>
+      </Section>
+    </Screen>
   );
 }

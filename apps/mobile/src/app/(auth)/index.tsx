@@ -1,9 +1,9 @@
-import { Link } from 'expo-router';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
-import { Button, Card, Field, Notice, Row, Screen, ScreenTitle, T } from '@/components';
-import { useTheme } from '@/constants/theme';
+import { BText, Button, Field, Screen, ScreenHeader, Section, useTheme } from '@/bridge-design-system';
+import { Notice, Stack } from '@/components/shared';
 import { errorMessage } from '@/lib/api';
 import { signInDemo } from '@/lib/demo';
 import { signInWithGoogle } from '@/lib/oauth';
@@ -25,25 +25,30 @@ export default function SignIn() {
   const signIn = () => run('password', async () => { const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password }); if (error) throw error; });
 
   return (
-    <Screen contentStyle={{ justifyContent: 'center', flexGrow: 1, paddingTop: space[8] }}>
-      <ScreenTitle title="Bridge" caption="Tell Bridge what you want to accomplish. It finds the people you already know who can help, shows the evidence, and suggests a next step." />
-      {!isConfigured ? <Notice>The backend is not configured. Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY in apps/mobile/.env, then restart the dev server.</Notice> : null}
-      <Card>
-        <Field label="Email" autoCapitalize="none" autoComplete="email" keyboardType="email-address" value={email} onChangeText={setEmail} placeholder="you@example.com" />
-        <Field label="Password" secureTextEntry autoComplete="password" value={password} onChangeText={setPassword} placeholder="Your password" onSubmitEditing={signIn} />
-        {error ? <Notice>{error}</Notice> : null}
-        <Button variant="primary" title="Sign in" loading={busy === 'password'} disabled={!email || !password} onPress={signIn} />
-        <Row between>
-          <Link href="/sign-up" asChild><Button variant="ghost" size="sm" title="Create account" /></Link>
-          <Link href="/forgot" asChild><Button variant="ghost" size="sm" title="Forgot password" /></Link>
-        </Row>
-        {googleEnabled ? <Button title="Continue with Google" loading={busy === 'google'} onPress={() => run('google', signInWithGoogle)} /> : null}
-      </Card>
-      <View style={{ gap: space[2], marginTop: space[3] }}>
-        <T variant="label" color="inkSoft">Try the demo</T>
-        <T variant="caption" color="inkSoft">A fictional account with about 40 cards, notes, plugin imports, and a nearby simulator labeled as such. Local stack only.</T>
-        <Button title="Open the demo account" loading={busy === 'demo'} onPress={() => run('demo', signInDemo)} />
+    <Screen>
+      <View style={{ paddingTop: space[8] }}>
+        <ScreenHeader title="Bridge" subtitle="Tell Bridge what you want to accomplish. It finds the people you already know who can help, shows the evidence, and suggests a next step." />
       </View>
+      {!isConfigured ? <Notice tone="cautionInk">The backend is not configured. Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY in apps/mobile/.env, then restart the dev server.</Notice> : null}
+      <Section label="Sign in">
+        <Stack>
+          <Field label="Email" autoCapitalize="none" autoComplete="email" keyboardType="email-address" value={email} onChangeText={setEmail} placeholder="you@example.com" />
+          <Field label="Password" secureTextEntry autoComplete="password" value={password} onChangeText={setPassword} placeholder="Your password" onSubmitEditing={signIn} />
+          {error ? <Notice tone="dangerInk">{error}</Notice> : null}
+          <Button variant="primary" size="sm" fullWidth label={busy === 'password' ? 'Signing in…' : 'Sign in'} disabled={!!busy || !email || !password} onPress={signIn} />
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            <Button variant="ghost" size="sm" label="Create account" onPress={() => router.push('/sign-up')} />
+            <Button variant="ghost" size="sm" label="Forgot password" onPress={() => router.push('/forgot')} />
+          </View>
+          {googleEnabled ? <Button size="sm" fullWidth label={busy === 'google' ? 'Opening Google…' : 'Continue with Google'} disabled={!!busy} onPress={() => run('google', signInWithGoogle)} /> : null}
+        </Stack>
+      </Section>
+      <Section label="Try the demo">
+        <Stack>
+          <BText variant="secondary" color="inkSoft">A fictional account with about 40 cards, notes, plugin imports, and a nearby simulator labeled as such.</BText>
+          <Button size="sm" fullWidth label={busy === 'demo' ? 'Opening…' : 'Open the demo account'} disabled={!!busy} onPress={() => run('demo', signInDemo)} />
+        </Stack>
+      </Section>
     </Screen>
   );
 }

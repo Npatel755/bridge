@@ -2,8 +2,8 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Linking, Platform, View } from 'react-native';
 
-import { Button, Card, Flag, Loading, NearbyMatchCard, NearbyRings, NearbyStatusRow, Notice, Row, Screen, ScreenTitle, Segmented, Sheet, T, Toggle } from '@/components';
-import { useTheme } from '@/constants/theme';
+import { BText, Button, EmptyRow, Group, NearbyDot, NearbyMatchCard, Row, Screen, ScreenHeader, Section, Tag, TagList, Toggle, useTheme } from '@/bridge-design-system';
+import { Loading, Notice, Stack } from '@/components/shared';
 import { useAsync } from '@/hooks/use-async';
 import { errorMessage } from '@/lib/api';
 import { getCapability, getStatus, loadMatch, requestBackground, requestForeground, runSimulation, startCollecting, startSession, stopCollecting, stopSession, type Capability, type MatchPayload, type NearbyStatus, type PublishResult } from '@/lib/nearby';
@@ -16,7 +16,8 @@ const AUDIENCE = [{ key: 'both', label: 'Anyone' }, { key: 'existing', label: 'M
 const DEMO_POINT = { lat: 33.7756, lng: -84.3963 }; // fictional campus square used by the simulator
 
 export default function Nearby() {
-  const { space } = useTheme();
+  const { space, colors } = useTheme();
+  const [more, setMore] = useState<string | null>(null);
   const { profile, session } = useSession();
   const [cap, setCap] = useState<Capability>('undetermined');
   const [last, setLast] = useState<PublishResult | null>(null);
@@ -102,74 +103,88 @@ export default function Nearby() {
   const live = matches.data ?? [];
   const radius = (prefs?.radius_m ?? 100) as 50 | 100 | 250;
 
+  const meters = (b: MatchPayload['band']) => (b === 'very_close' ? 10 : b === 'close' ? 40 : 120);
   return (
     <Screen>
-      <ScreenTitle title="Nearby" caption="Notices people within a coarse distance who share a skill and an interest with you. Both of you must have it on." />
-      {status.loading && !status.data ? <Loading /> : (
-        <NearbyStatusRow state={rowState} title={rowTitle} detail={rowDetail} enabled={active} onToggle={(v) => (v ? begin(cap === 'background_capable' ? 'background' : 'foreground') : end())} onSettings={() => (Platform.OS === 'web' ? requestForeground().then(setCap) : Linking.openSettings())} />
-      )}
-      {error ? <Notice>{error}</Notice> : null}
-      {last && last.status !== 'ok' && last.status !== 'rate_limited' ? <Notice>{explain(last.status)}</Notice> : null}
-      <NearbyRings matchBands={live.map((m) => m.band)} radiusM={radius} />
+      <ScreenHeader
+        left={<View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}><NearbyDot state={rowState === 'on' ? 'on' : 'off'} /><BText variant="label" color={rowState === 'on' ? 'nearbyInk' : 'inkSoft'}>{rowTitle}</BText></View>}
+        right={<Button size="sm" variant="ghost" label="Personas" onPress={() => router.push('/settings?section=personas')} />}
+        title="Nearby" subtitle={rowDetail}
+        accessory={status.loading && !status.data ? <Loading /> : (
+          <Row title={active ? 'Nearby is on' : 'Turn Nearby on'} titleVariant="label" subtitle="Only rough distance is shared. Never your location. Discovery requires mutual opt-in."
+            trailing={<Toggle tone="nearby" value={active} onValueChange={(v) => (v ? begin(cap === 'background_capable' ? 'background' : 'foreground') : end())} accessibilityLabel="Nearby" />} />
+        )} />
+      {error ? <Notice tone="dangerInk">{error}</Notice> : null}
+      {last && last.status !== 'ok' && last.status !== 'rate_limited' ? <Notice tone="cautionInk">{explain(last.status)}</Notice> : null}
 
-      {live.map((m, i) => {
-        return (
-          <NearbyMatchCard key={m.event_id} match={m} announce={i === 0} starter={starterFor(m)}
-            onRequestIntro={() => act(m, 'intro')} onDismiss={() => act(m, 'dismiss')} onMute={() => act(m, 'mute')} onBlock={() => setConfirm({ kind: 'block', m })} onReport={() => setConfirm({ kind: 'report', m })} />
-        );
-      })}
-      {active && live.length === 0 ? <Card dashed><T variant="body">No one matching yet. Matches need two steady readings from both phones, a shared skill and interest, and no block or mute in the way.</T></Card> : null}
+      <Section label={live.length ? `${live.length} ${live.length === 1 ? 'person' : 'people'} nearby` : 'Nearby now'}>
+        <Stack>
+          {live.map((m) => {
+            const topics = [...m.shared_skills, ...m.shared_interests].map((t) => t.replace(/-/g, ' '));
+            return (
+              <View key={m.event_id} style={{ gap: space[2] }}>
+                <NearbyMatchCard name={m.profile.display_name} headline={[m.profile.role_title, m.profile.company || m.profile.school].filter(Boolean).join(', ')} meters={meters(m.band)}
+                  summary={`Shares ${topics.slice(0, 2).join(' and ')} with you${m.is_existing_contact ? '; already in your card file' : ''}.`} sharedTopics={topics} starter={starterFor(m)}
+                  source={m.is_existing_contact ? 'Your card and their Bridge profile' : 'Their Bridge profile, what they chose to share'} simulated={m.simulated}
+                  onRequestIntro={() => act(m, 'intro')} onDismiss={() => act(m, 'dismiss')} onMore={() => setMore(more === m.event_id ? null : m.event_id)} />
+                {more === m.event_id ? (
+                  <Group>
+                    <Row title="Mute for a day" titleVariant="label" subtitle="No alerts from this person until tomorrow." onPress={() => { setMore(null); act(m, 'mute'); }} />
+                    <Row title={confirm?.kind === 'block' && confirm.m.event_id === m.event_id ? 'Confirm block' : 'Block'} titleVariant="label" subtitle="They never match or message you again. Undo in Settings." onPress={() => (confirm?.kind === 'block' && confirm.m.event_id === m.event_id ? (setConfirm(null), setMore(null), act(m, 'block')) : setConfirm({ kind: 'block', m }))} />
+                    <Row title={confirm?.kind === 'report' && confirm.m.event_id === m.event_id ? 'Confirm report' : 'Report'} titleVariant="label" subtitle="Sends this match to the Bridge team and hides it." onPress={() => (confirm?.kind === 'report' && confirm.m.event_id === m.event_id ? (setConfirm(null), setMore(null), act(m, 'report')) : setConfirm({ kind: 'report', m }))} />
+                  </Group>
+                ) : null}
+              </View>
+            );
+          })}
+          {live.length === 0 ? (
+            <Stack>
+              <EmptyRow title={active ? 'No one matching yet. Matches need two steady readings from both phones, a shared skill and interest, and no block or mute in the way.' : 'Nearby is off. Turn it on to notice people within your radius who share a skill and an interest with you.'} />
+              {!active ? <Button size="sm" variant="primary" fullWidth label={busy === 'foreground' ? 'Starting…' : 'Turn on while using the app'} disabled={!!busy || cap === 'unsupported'} onPress={() => begin('foreground')} /> : null}
+              {!active && Platform.OS !== 'web' ? <Button size="sm" fullWidth label="Allow in background" disabled={!!busy} onPress={() => begin('background')} /> : null}
+            </Stack>
+          ) : null}
+        </Stack>
+      </Section>
 
       {intros.data?.length ? (
-        <View style={{ gap: space[2] }}>
-          <T variant="title">Intro requests for you</T>
-          {intros.data.map((r) => (
-            <Card key={r.id}>
-              <T variant="note">“{r.message}”</T>
-              <Row>
-                <Button variant="primary" size="sm" title="Accept" onPress={async () => { await supabase.from('intro_requests').update({ status: 'accepted', responded_at: new Date().toISOString() }).eq('id', r.id); intros.reload(); }} />
-                <Button size="sm" title="Decline" onPress={async () => { await supabase.from('intro_requests').update({ status: 'declined', responded_at: new Date().toISOString() }).eq('id', r.id); intros.reload(); }} />
-              </Row>
-            </Card>
-          ))}
-        </View>
+        <Section label="Intro requests for you">
+          <Group>
+            {intros.data.map((r) => (
+              <Row key={r.id} title={r.message} titleVariant="note" trailing={<View style={{ flexDirection: 'row', gap: space[1] }}>
+                <Button variant="primary" size="sm" label="Accept" onPress={async () => { await supabase.from('intro_requests').update({ status: 'accepted', responded_at: new Date().toISOString() }).eq('id', r.id); intros.reload(); }} />
+                <Button variant="ghost" size="sm" label="Decline" onPress={async () => { await supabase.from('intro_requests').update({ status: 'declined', responded_at: new Date().toISOString() }).eq('id', r.id); intros.reload(); }} />
+              </View>} />
+            ))}
+          </Group>
+        </Section>
       ) : null}
 
-      <T variant="title" style={{ marginTop: space[3] }}>Settings</T>
-      <Card>
-        <T variant="label" color="inkSoft">Radius</T>
-        <Segmented options={[...RADII]} value={String(radius) as (typeof RADII)[number]['key']} onChange={(k) => savePrefs({ radius_m: Number(k) })} />
-        <T variant="caption" color="inkSoft">When two people pick different radii, the smaller one wins.</T>
-        <T variant="label" color="inkSoft" style={{ marginTop: space[2] }}>Who can match you</T>
-        <Segmented options={[...AUDIENCE]} value={(prefs?.audience ?? 'both') as (typeof AUDIENCE)[number]['key']} onChange={(k) => savePrefs({ audience: k })} />
-        <Row between style={{ marginTop: space[2] }}><T variant="body">Haptic alert</T><Toggle label="Haptic alert" value={prefs?.haptics ?? true} onValueChange={(v) => savePrefs({ haptics: v })} /></Row>
-        <Row between><T variant="body">Visual alerts only (no notifications)</T><Toggle label="Visual only" value={prefs?.visual_only ?? false} onValueChange={(v) => savePrefs({ visual_only: v })} /></Row>
-        <T variant="caption" color="inkSoft">Sessions last {prefs?.session_minutes ?? 60} minutes. One alert per person per hour, at most {prefs?.burst_max ?? 3} alerts in {Math.round((prefs?.burst_window_sec ?? 600) / 60)} minutes. {status.data?.discoverable_skills ?? 0} skills and {status.data?.discoverable_interests ?? 0} interests on your card are discoverable.</T>
-      </Card>
-      {!active ? (
-        <Row wrap>
-          <Button variant="primary" title="Turn on while using the app" loading={busy === 'foreground'} onPress={() => begin('foreground')} disabled={cap === 'unsupported'} />
-          {Platform.OS !== 'web' ? <Button title="Allow in background" loading={busy === 'background'} onPress={() => begin('background')} /> : null}
-        </Row>
-      ) : <Button title="Turn off and remove my presence" loading={busy === 'stop'} onPress={end} />}
-      <T variant="caption" color="inkSoft">{capabilityCopy(cap)}</T>
+      <Section label="Your visibility">
+        <Group>
+          <Row title="Radius" titleVariant="label" subtitle="When two people pick different radii, the smaller one wins." trailing={<TagList>{RADII.map((r) => <Tag key={r.key} label={r.label} variant={String(radius) === r.key ? 'selected' : 'stated'} onPress={() => savePrefs({ radius_m: Number(r.key) })} />)}</TagList>} />
+          <Row title="Who can match you" titleVariant="label" trailing={<TagList>{AUDIENCE.map((a) => <Tag key={a.key} label={a.label} variant={(prefs?.audience ?? 'both') === a.key ? 'selected' : 'stated'} onPress={() => savePrefs({ audience: a.key })} />)}</TagList>} />
+          <Row title="Haptic alert" titleVariant="label" trailing={<Toggle value={prefs?.haptics ?? true} onValueChange={(v) => savePrefs({ haptics: v })} accessibilityLabel="Haptic alert" />} />
+          <Row title="Visual alerts only" titleVariant="label" subtitle="No notifications." trailing={<Toggle value={prefs?.visual_only ?? false} onValueChange={(v) => savePrefs({ visual_only: v })} accessibilityLabel="Visual alerts only" />} />
+          <Row title="Location permission" titleVariant="label" subtitle={capabilityCopy(cap)} chevron onPress={() => (Platform.OS === 'web' ? requestForeground().then(setCap) : Linking.openSettings())} />
+        </Group>
+        <View style={{ marginTop: space[2] }}>
+          <BText variant="secondary" color="inkSoft">Sessions last {prefs?.session_minutes ?? 60} minutes. One alert per person per hour, at most {prefs?.burst_max ?? 3} alerts in {Math.round((prefs?.burst_window_sec ?? 600) / 60)} minutes. {status.data?.discoverable_skills ?? 0} skills and {status.data?.discoverable_interests ?? 0} interests on your card are discoverable.</BText>
+        </View>
+        {active ? <View style={{ marginTop: space[3] }}><Button size="sm" fullWidth label={busy === 'stop' ? 'Stopping…' : 'Turn off and remove my presence'} disabled={!!busy} onPress={end} /></View> : null}
+      </Section>
 
-      <Card style={{ marginTop: space[3] }}>
-        <Flag label="Demo simulator, not real location" tone="nearby" />
-        <T variant="body">Places fictional personas around a fixed point and sends two simulated readings. It shows a valid match and how the rules exclude others: blocked, no shared interest, Nearby off, out of range, poor accuracy, smaller radius.</T>
-        {simMsg ? <Notice tone="plain">{simMsg}</Notice> : null}
-        <Button title="Run the simulation" loading={busy === 'sim'} onPress={simulate} disabled={!profile} />
-        <Button variant="ghost" size="sm" title="Why each persona was included or excluded" onPress={() => router.push('/settings?section=personas')} />
-      </Card>
-
-      <Sheet visible={!!confirm} onClose={() => setConfirm(null)} title={confirm?.kind === 'block' ? `Block ${confirm.m.profile.display_name}?` : `Report ${confirm?.m.profile.display_name}?`}>
-        <T variant="body" color="inkSoft">{confirm?.kind === 'block' ? 'They will no longer match or message you, and pending intro requests are declined. You can undo this in Settings.' : 'Sends this match to the Bridge team for review and hides it from you.'}</T>
-        <Button variant="danger" title={confirm?.kind === 'block' ? 'Block' : 'Report'} onPress={() => { if (confirm) act(confirm.m, confirm.kind); setConfirm(null); }} />
-      </Sheet>
+      <Section label="Demo simulator, not real location">
+        <Stack>
+          <EmptyRow title="Places fictional personas around a fixed point and sends two simulated readings. Shows a valid match and how the rules exclude others: blocked, no shared interest, Nearby off, out of range, poor accuracy, smaller radius." />
+          {simMsg ? <Notice tone="nearbyInk">{simMsg}</Notice> : null}
+          <Button size="sm" variant="primary" fullWidth label={busy === 'sim' ? 'Simulating…' : 'Run the simulation'} disabled={busy === 'sim' || !profile} onPress={simulate} />
+        </Stack>
+      </Section>
+      <View style={{ height: space[2], borderBottomWidth: 0, borderColor: colors.rule }} />
     </Screen>
   );
 }
-
 function starterFor(m: MatchPayload) {
   const topic = m.shared_skills[0] ?? m.shared_interests[0];
   return topic ? `Ask what ${m.profile.display_name.split(' ')[0]} is building with ${topic.replace(/-/g, ' ')}.` : undefined;

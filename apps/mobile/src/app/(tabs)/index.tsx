@@ -1,16 +1,15 @@
-import type { TeamPlan } from '@bridge/core';
-import { Link, router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Pressable, View } from 'react-native';
 
-import { AskField, Button, Card, Flag, Loading, NearbyDot, Notice, Row, Screen, T } from '@/components';
-import { useTheme } from '@/constants/theme';
+import { AskField, Button, EmptyRow, Group, Row, Screen, ScreenHeader, Section } from '@/bridge-design-system';
+import { Loading, Notice, Stack, surnameInitial } from '@/components/shared';
 import { useAsync } from '@/hooks/use-async';
 import { errorMessage } from '@/lib/api';
 import { loadDemoNetwork } from '@/lib/demo';
 import { useNearbyOn } from '@/lib/nearby/state';
 import { useSession } from '@/lib/session';
 import { supabase } from '@/lib/supabase';
+import type { TeamPlan } from '@bridge/core';
 
 interface Reminder { id: string; title: string; due_at: string; contact: { id: string; name: string } | null }
 interface Goal { id: string; description: string; plan: TeamPlan | null }
@@ -18,7 +17,6 @@ interface Goal { id: string; description: string; plan: TeamPlan | null }
 const EXAMPLES = ['Who can help prototype a smart bike light?', 'Who could introduce me to someone in manufacturing?', 'Who might want to start something with me?'];
 
 export default function Home() {
-  const { colors, space, radius } = useTheme();
   const { profile } = useSession();
   const nearbyOn = useNearbyOn();
   const [q, setQ] = useState('');
@@ -37,99 +35,78 @@ export default function Home() {
   useFocusEffect(useCallback(() => { reload(); }, [reload]));
 
   const first = profile?.display_name?.split(' ')[0] ?? 'there';
-  const today = new Date(now).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
-  const submit = () => q.trim() && router.push({ pathname: '/ask', params: { q: q.trim() } });
   const n = home.data?.contacts ?? 0;
   const plan = home.data?.goal?.plan;
   const filled = plan?.roles.filter((r) => r.filled).length ?? 0;
-  const dueLabel = (d: string) => { const diff = Math.round((new Date(d).getTime() - now) / 86_400_000); return diff <= 0 ? 'Today' : diff === 1 ? 'Tomorrow' : `In ${diff} days`; };
+  const submit = (text = q) => text.trim() && router.push({ pathname: '/ask', params: { q: text.trim() } });
+  const dueLabel = (d: string) => { const diff = Math.round((new Date(d).getTime() - now) / 86_400_000); return diff <= 0 ? 'Due today' : diff === 1 ? 'Due tomorrow' : `Due in ${diff} days`; };
 
   return (
-    <Screen contentStyle={{ paddingTop: space[6] }}>
-      <Row between>
-        <T variant="caption" color="inkSoft">{today}</T>
-        {nearbyOn ? <Pressable onPress={() => router.push('/nearby')} accessibilityRole="button" accessibilityLabel="Nearby is on" style={{ flexDirection: 'row', alignItems: 'center', gap: space[1], backgroundColor: colors.card, borderColor: colors.cardEdge, borderWidth: 1, borderRadius: radius.round, paddingHorizontal: space[3], height: 32 }}><NearbyDot state="on" /><T variant="label">Nearby on</T></Pressable> : null}
-      </Row>
-      <T variant="display" accessibilityRole="header">What are you working on, {first}?</T>
-      <AskField value={q} onChange={setQ} onSubmit={submit} scope={n ? `Searches only your ${n} card${n === 1 ? '' : 's'}. Keyword search.` : 'Searches only your cards. Add a card or load the demo first.'} />
-      {q.trim() ? <Button variant="primary" title="Ask your cards" onPress={submit} /> : null}
-      <View style={{ gap: space[2] }}>
-        {EXAMPLES.map((e) => (
-          <Pressable key={e} accessibilityRole="button" onPress={() => router.push({ pathname: '/ask', params: { q: e } })} style={({ pressed }) => [{ backgroundColor: colors.tab, borderRadius: radius.card, paddingHorizontal: space[4], paddingVertical: space[3] }, pressed && { opacity: 0.8 }]}>
-            <T variant="note">{e}</T>
-          </Pressable>
-        ))}
-      </View>
+    <Screen>
+      <ScreenHeader title="Ask your network" subtitle={n ? `Hi ${first}. Searches only your ${n} card${n === 1 ? '' : 's'}; answers cite your own notes.` : `Hi ${first}. Bridge only answers from people you add.`}
+        right={nearbyOn ? <Button size="sm" variant="ghost" label="Nearby on" onPress={() => router.push('/nearby')} /> : undefined} />
+      <Section label="Your question">
+        <Stack>
+          <Group><AskField value={q} onChangeText={setQ} onSubmit={() => submit()} placeholder={EXAMPLES[0]} embedded /></Group>
+          <Button size="sm" variant="primary" label="Find people" fullWidth disabled={!q.trim()} onPress={() => submit()} />
+        </Stack>
+      </Section>
+      <Section label="Try asking">
+        <Group>{EXAMPLES.map((e) => <Row key={e} title={e} titleVariant="note" chevron onPress={() => submit(e)} />)}</Group>
+      </Section>
 
       {profile?.is_demo && home.data && n === 0 ? (
-        <Card>
-          <Flag label="Demo account" />
-          <T variant="body">Load about 40 fictional cards, notes, plugin imports, and nearby personas to explore every feature.</T>
-          {msg ? <Notice tone="confirm">{msg}</Notice> : null}
-          <Button title="Load the demo network" loading={demoBusy} onPress={async () => { setDemoBusy(true); try { const r = await loadDemoNetwork(); setMsg(`Loaded ${r.contacts} cards and ${r.notes} notes.`); reload(); } catch (e) { setMsg(errorMessage(e)); } finally { setDemoBusy(false); } }} />
-        </Card>
+        <Section label="Demo account">
+          <Stack>
+            <EmptyRow title="Load about 40 fictional cards, notes, plugin imports and nearby personas to explore every feature." />
+            {msg ? <Notice tone="confirmInk">{msg}</Notice> : null}
+            <Button size="sm" variant="primary" fullWidth label={demoBusy ? 'Loading…' : 'Load the demo network'} disabled={demoBusy} onPress={async () => { setDemoBusy(true); try { const r = await loadDemoNetwork(); setMsg(`Loaded ${r.contacts} cards and ${r.notes} notes.`); reload(); } catch (e) { setMsg(errorMessage(e)); } finally { setDemoBusy(false); } }} />
+          </Stack>
+        </Section>
       ) : null}
-
       {!profile?.is_demo && home.data && n === 0 ? (
-        <Card dashed>
-          <T variant="name">Your cards are empty</T>
-          <T variant="body" color="inkSoft">Bridge only answers from people you add. Start with one card or a note about someone you met, or import a list.</T>
-          <Row>
-            <Button size="sm" variant="primary" title="Add a card" onPress={() => router.push('/contact/edit')} />
-            <Button size="sm" title="Write a note" onPress={() => router.push('/note/new')} />
-            <Button size="sm" title="Import" onPress={() => router.push('/plugins')} />
-          </Row>
-        </Card>
+        <Section label="Room for your first card">
+          <Group dashed>
+            <Row title="Add a card" titleVariant="label" subtitle="Someone you already know." chevron onPress={() => router.push('/contact/edit')} />
+            <Row title="Write a note" titleVariant="label" subtitle="What you remember about meeting someone." chevron onPress={() => router.push('/note/new')} />
+            <Row title="Import" titleVariant="label" subtitle="LinkedIn export, CSV, or phone contacts." chevron onPress={() => router.push('/plugins')} />
+          </Group>
+        </Section>
       ) : null}
 
-      <Row between style={{ marginTop: space[3] }}>
-        <T variant="title">Your goal</T>
-        <Link href="/team" asChild><Button variant="ghost" size="sm" title="Build my team" /></Link>
-      </Row>
-      {home.loading && !home.data ? <Loading /> : home.data?.goal && plan ? (
-        <Card>
-          <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/team', params: { id: home.data?.goal?.id } })} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space[3] }}>
-            <View style={{ flex: 1 }}>
-              <T variant="name">{home.data.goal.description}</T>
-              <T variant="caption" color="inkSoft">{filled} of {plan.roles.length} roles have someone. {plan.roles.length - filled} open.</T>
-            </View>
-            <View style={{ flexDirection: 'row', gap: 3 }} aria-hidden>
-              {plan.roles.map((r, i) => <View key={i} style={{ width: 10, height: 22, borderRadius: 2, backgroundColor: r.filled ? colors.action : 'transparent', borderWidth: r.filled ? 0 : 1, borderColor: colors.cardEdge, borderStyle: 'dashed' }} />)}
-            </View>
-          </Pressable>
-        </Card>
-      ) : (
-        <Card dashed>
-          <T variant="body">No goal yet. Describe what you want to build and Bridge will turn it into roles and find people for each.</T>
-          <Button size="sm" title="Describe a project" onPress={() => router.push('/team')} style={{ alignSelf: 'flex-start' }} />
-        </Card>
-      )}
+      <Section label="Your next step">
+        {home.loading && !home.data ? <Loading /> : (
+          <Group dashed={!plan}>
+            {home.data?.goal && plan ? (
+              <Row title={home.data.goal.description} titleVariant="rowName" subtitle={`${filled} of ${plan.roles.length} roles have someone. ${plan.roles.length - filled} open.`} chevron onPress={() => router.push({ pathname: '/team', params: { id: home.data?.goal?.id } })} />
+            ) : (
+              <Row title="Build a team for an idea" titleVariant="label" subtitle="See which roles your network can fill and what's still missing." chevron onPress={() => router.push('/team')} />
+            )}
+          </Group>
+        )}
+      </Section>
 
-      <T variant="title" style={{ marginTop: space[3] }}>Follow-ups</T>
-      {home.error ? <Notice>{home.error}</Notice> : null}
-      {home.data && home.data.reminders.length === 0 ? (
-        <Card dashed><T variant="body">Nothing to follow up on. Add a reminder from any card after you meet someone.</T></Card>
-      ) : (
-        <Card padded={false}>
-          {home.data?.reminders.map((r, i) => (
-            <View key={r.id} style={{ flexDirection: 'row', alignItems: 'center', gap: space[3], paddingHorizontal: space[4], paddingVertical: space[3], borderTopWidth: i ? 1 : 0, borderTopColor: colors.rule }}>
-              <Pressable accessibilityRole="button" accessibilityLabel={`Open ${r.contact?.name ?? 'card'}`} onPress={() => r.contact && router.push({ pathname: '/contact/[id]', params: { id: r.contact.id } })} style={{ width: 28, height: 28, borderRadius: radius.chip, backgroundColor: colors.tab, alignItems: 'center', justifyContent: 'center' }}>
-                <T variant="tabLetter" color="inkSoft">{(r.contact?.name ?? '?').trim().split(/\s+/).pop()?.[0]?.toUpperCase()}</T>
-              </Pressable>
-              <View style={{ flex: 1 }}>
-                <T variant="body">{r.title}</T>
-                <T variant="caption" style={{ color: new Date(r.due_at).getTime() <= now ? colors.cautionInk : colors.inkSoft }}>{dueLabel(r.due_at)}</T>
-              </View>
-              <Button variant="ghost" size="sm" title="Done" onPress={async () => { await supabase.from('reminders').update({ done_at: new Date().toISOString() }).eq('id', r.id); reload(); }} />
-            </View>
-          ))}
-        </Card>
-      )}
-      <Row wrap style={{ marginTop: space[3] }}>
-        <Button size="sm" title="Capture a note" onPress={() => router.push('/note/new')} />
-        <Button size="sm" title="Add a card" onPress={() => router.push('/contact/edit')} />
-        <Button size="sm" title="Import" onPress={() => router.push('/plugins')} />
-      </Row>
+      <Section label="Follow-ups">
+        {home.error ? <Notice tone="dangerInk">{home.error}</Notice> : null}
+        {home.data && home.data.reminders.length === 0 ? (
+          <EmptyRow title="Nothing to follow up on. Add a reminder from any card after you meet someone." />
+        ) : (
+          <Group>
+            {home.data?.reminders.map((r) => (
+              <Row key={r.id} overline={r.contact ? `${surnameInitial(r.contact.name)} · ${r.contact.name}` : undefined} title={r.title} subtitle={dueLabel(r.due_at)} subtitleColor={new Date(r.due_at).getTime() <= now ? 'cautionInk' : 'inkSoft'}
+                onPress={() => r.contact && router.push({ pathname: '/contact/[id]', params: { id: r.contact.id } })}
+                trailing={<Button variant="ghost" size="sm" label="Done" onPress={async () => { await supabase.from('reminders').update({ done_at: new Date().toISOString() }).eq('id', r.id); reload(); }} />} />
+            ))}
+          </Group>
+        )}
+      </Section>
+      <Section label="Add to your card file">
+        <Group>
+          <Row title="Capture a note" titleVariant="label" chevron onPress={() => router.push('/note/new')} />
+          <Row title="Add a card" titleVariant="label" chevron onPress={() => router.push('/contact/edit')} />
+          <Row title="Import people" titleVariant="label" chevron onPress={() => router.push('/plugins')} />
+        </Group>
+      </Section>
     </Screen>
   );
 }

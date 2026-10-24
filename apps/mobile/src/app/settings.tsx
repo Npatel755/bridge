@@ -1,10 +1,10 @@
 import * as Clipboard from 'expo-clipboard';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Platform, View } from 'react-native';
+import { Platform } from 'react-native';
 
-import { Button, Card, Flag, Loading, Notice, Row, Screen, ScreenTitle, Sheet, T, TopBar } from '@/components';
-import { useTheme } from '@/constants/theme';
+import { BText, Button, EmptyRow, Group, Row, Screen, ScreenHeader, Section } from '@/bridge-design-system';
+import { Back, Loading, Notice, Stack } from '@/components/shared';
 import { useAsync } from '@/hooks/use-async';
 import { api, errorMessage } from '@/lib/api';
 import { useSession } from '@/lib/session';
@@ -13,7 +13,6 @@ import { supabase } from '@/lib/supabase';
 interface Persona { key: string; display_name: string; note: string; nearby_enabled: boolean; blocked: boolean; shares_skill: boolean; shares_interest: boolean; offset_m: number; accuracy_m: number; radius_m: number }
 
 export default function Settings() {
-  const { space } = useTheme();
   const { section } = useLocalSearchParams<{ section?: string }>();
   const { session, profile, signOut } = useSession();
   const [busy, setBusy] = useState<string | null>(null);
@@ -41,55 +40,53 @@ export default function Settings() {
   }
 
   return (
-    <>
-      <TopBar onBack={() => router.back()} title="Settings" />
-      <Screen>
-        <ScreenTitle title="Settings and data" caption={session?.user.email ?? ''} />
-        {error ? <Notice>{error}</Notice> : null}
-        {msg ? <Notice tone="confirm">{msg}</Notice> : null}
+    <Screen>
+      <ScreenHeader left={<Back />} title="Settings and data" subtitle={session?.user.email ?? ''} />
+      {error ? <Notice tone="dangerInk">{error}</Notice> : null}
+      {msg ? <Notice tone="confirmInk">{msg}</Notice> : null}
 
-        {profile?.is_demo && (section === 'personas' || personas.data?.length) ? (
-          <Card>
-            <Flag label="Demo simulator personas" tone="nearby" />
-            <T variant="body" color="inkSoft">Each fictional persona shows one rule. Only the first can match.</T>
-            {personas.loading ? <Loading /> : personas.data?.map((p) => (
-              <View key={p.key} style={{ gap: 2, paddingVertical: space[1] }}>
-                <Row between><T variant="name">{p.display_name}</T><T variant="caption" color={p.nearby_enabled && !p.blocked && p.shares_skill && p.shares_interest && p.accuracy_m <= 50 && p.offset_m <= Math.min(p.radius_m, 100) ? 'confirmInk' : 'cautionInk'}>{p.note}</T></Row>
-                <T variant="caption" color="inkSoft">{p.offset_m} m away · accuracy {p.accuracy_m} m · radius {p.radius_m} m · nearby {p.nearby_enabled ? 'on' : 'off'} · {p.shares_skill ? 'shares a skill' : 'no shared skill'} · {p.shares_interest ? 'shares an interest' : 'no shared interest'}{p.blocked ? ' · blocked' : ''}</T>
-              </View>
-            ))}
-          </Card>
-        ) : null}
+      {profile?.is_demo && (section === 'personas' || personas.data?.length) ? (
+        <Section label="Demo simulator personas">
+          <Stack>
+            <BText variant="secondary" color="inkSoft">Each fictional persona shows one rule. Only the first can match.</BText>
+            {personas.loading ? <Loading /> : (
+              <Group>
+                {personas.data?.map((p) => {
+                  const ok = p.nearby_enabled && !p.blocked && p.shares_skill && p.shares_interest && p.accuracy_m <= 50 && p.offset_m <= Math.min(p.radius_m, 100);
+                  return <Row key={p.key} title={p.display_name} titleVariant="rowName" overline={`${ok ? 'Can match' : 'Cannot match'} · ${p.note}`} subtitle={`${p.offset_m} m away · accuracy ${p.accuracy_m} m · radius ${p.radius_m} m · nearby ${p.nearby_enabled ? 'on' : 'off'} · ${p.shares_skill ? 'shares a skill' : 'no shared skill'} · ${p.shares_interest ? 'shares an interest' : 'no shared interest'}${p.blocked ? ' · blocked' : ''}`} />;
+                })}
+              </Group>
+            )}
+          </Stack>
+        </Section>
+      ) : null}
 
-        <T variant="title">Your data</T>
-        <Card>
-          <T variant="body">Export everything Bridge holds for you: profile, cards, notes, evidence, drafts, nearby settings, and plugin records. Raw location is never stored long enough to export.</T>
-          <Button title="Export my data as JSON" loading={busy === 'export'} onPress={exportData} />
-        </Card>
-        <Card>
-          <T variant="body">Deleting your account removes your profile, cards, notes, presence, and sign-in. This cannot be undone.</T>
-          <Button variant="danger" title="Delete my account" onPress={() => setConfirmDelete(true)} />
-        </Card>
+      <Section label="Your data">
+        <Group>
+          <Row title="Export my data as JSON" titleVariant="label" subtitle={busy === 'export' ? 'Preparing…' : 'Profile, cards, notes, evidence, drafts, nearby settings, plugin records. Raw location is never stored long enough to export.'} chevron onPress={() => { if (!busy) exportData(); }} />
+          <Row title={confirmDelete ? 'Tap again to delete everything' : 'Delete my account'} titleVariant="label" subtitle={confirmDelete ? (busy === 'delete' ? 'Deleting…' : 'Removes profile, cards, notes, presence and sign-in right away. Export first if you want a copy.') : 'Cannot be undone.'} onPress={() => { if (busy) return; if (confirmDelete) deleteAccount(); else setConfirmDelete(true); }} />
+          {confirmDelete ? <Row title="Keep my account" titleVariant="label" onPress={() => setConfirmDelete(false)} /> : null}
+        </Group>
+      </Section>
 
-        <T variant="title" style={{ marginTop: space[2] }}>Blocked people</T>
-        {blocks.data?.length ? blocks.data.map((b) => (
-          <Row key={b.blocked_id} between><T variant="body">{b.display_name}</T><Button variant="ghost" size="sm" title="Unblock" onPress={async () => { await supabase.from('blocks').delete().eq('blocked_id', b.blocked_id); blocks.reload(); }} /></Row>
-        )) : <T variant="caption" color="inkSoft">No one blocked. Blocking stops Nearby matches and intro requests both ways.</T>}
+      <Section label="Blocked people">
+        {blocks.data?.length ? (
+          <Group>{blocks.data.map((b) => <Row key={b.blocked_id} title={b.display_name} titleVariant="rowName" trailing={<Button variant="ghost" size="sm" label="Unblock" onPress={async () => { await supabase.from('blocks').delete().eq('blocked_id', b.blocked_id); blocks.reload(); }} />} />)}</Group>
+        ) : <EmptyRow title="No one blocked. Blocking stops Nearby matches and intro requests both ways." />}
+      </Section>
 
-        <T variant="title" style={{ marginTop: space[2] }}>Archived cards</T>
-        {archived.data?.length ? archived.data.map((c) => (
-          <Row key={c.id} between><T variant="body">{c.name}</T><Button variant="ghost" size="sm" title="Restore" onPress={async () => { await supabase.from('contacts').update({ archived: false }).eq('id', c.id); archived.reload(); }} /></Row>
-        )) : <T variant="caption" color="inkSoft">No archived cards.</T>}
+      <Section label="Archived cards">
+        {archived.data?.length ? (
+          <Group>{archived.data.map((c) => <Row key={c.id} title={c.name} titleVariant="rowName" trailing={<Button variant="ghost" size="sm" label="Restore" onPress={async () => { await supabase.from('contacts').update({ archived: false }).eq('id', c.id); archived.reload(); }} />} />)}</Group>
+        ) : <EmptyRow title="No archived cards." />}
+      </Section>
 
-        <T variant="title" style={{ marginTop: space[2] }}>About</T>
-        <T variant="caption" color="inkSoft">Bridge keeps matching logic on the server and in a tested core package. Ask and team results come from your own cards and notes. Without an AI key, searches use keyword rules and are labeled that way. Nearby shares only coarse distance bands; exact coordinates live in a restricted table and are deleted when you turn it off.</T>
-        <Button title="Sign out" onPress={signOut} style={{ marginTop: space[2] }} />
-
-        <Sheet visible={confirmDelete} onClose={() => setConfirmDelete(false)} title="Delete your account?">
-          <T variant="body" color="inkSoft">Everything is removed right away, including the sign-in. Export first if you want a copy.</T>
-          <Button variant="danger" title="Delete everything" loading={busy === 'delete'} onPress={deleteAccount} />
-        </Sheet>
-      </Screen>
-    </>
+      <Section label="About">
+        <Stack>
+          <BText variant="secondary" color="inkSoft">Bridge keeps matching logic on the server and in a tested core package. Ask and team results come from your own cards and notes. Without an AI key, searches use keyword rules and are labeled that way. Nearby shares only coarse distance bands; exact coordinates stay on the server and are deleted when you turn it off.</BText>
+          <Button size="sm" fullWidth label="Sign out" onPress={signOut} />
+        </Stack>
+      </Section>
+    </Screen>
   );
 }

@@ -3,17 +3,18 @@ import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Platform } from 'react-native';
 
-import { Button, Card, CheckRow, Field, Flag, Notice, Screen, ScreenTitle, T, TopBar } from '@/components';
+import { Button, EmptyRow, Field, Group, Row, Screen, ScreenHeader, Section, Toggle } from '@/bridge-design-system';
+import { Back, Notice } from '@/components/shared';
 import { errorMessage } from '@/lib/api';
 import { addEvidence, createContact } from '@/lib/contacts-data';
 import { useSession } from '@/lib/session';
 
-interface Row { id: string; name: string; email: string | null; company: string | null; title: string | null }
+interface PhoneRow { id: string; name: string; email: string | null; company: string | null; title: string | null }
 
 export default function ImportPhone() {
   const { session } = useSession();
   const [perm, setPerm] = useState<'unknown' | 'granted' | 'denied'>('unknown');
-  const [rows, setRows] = useState<Row[]>([]);
+  const [rows, setRows] = useState<PhoneRow[]>([]);
   const [picked, setPicked] = useState<Record<string, boolean>>({});
   const [q, setQ] = useState('');
   const [busy, setBusy] = useState(false);
@@ -49,24 +50,22 @@ export default function ImportPhone() {
   }
 
   return (
-    <>
-      <TopBar onBack={() => router.back()} title="Phone contacts" />
-      <Screen cta={n && !done ? <Button variant="primary" size="lg" title={`Import ${n} card${n === 1 ? '' : 's'}`} loading={busy} onPress={run} /> : undefined}>
-        <Flag label="Only the people you pick are imported" />
-        <ScreenTitle title="Choose phone contacts" caption="Names, emails, and companies only. Nothing is uploaded until you tap Import." />
-        {unsupported ? <Notice>Phone contacts are only available in the iOS and Android apps. Use a CSV import here.</Notice> : null}
-        {perm === 'denied' ? <Notice>Contacts permission is off. Allow it in system Settings to pick people here.</Notice> : null}
-        {error ? <Notice>{error}</Notice> : null}
-        {done ? <Card><T variant="body">{done}</T><Button size="sm" title="See your cards" onPress={() => router.replace('/network')} style={{ alignSelf: 'flex-start' }} /></Card> : null}
-        {perm === 'granted' && !done ? (
-          <>
-            <Field placeholder={`Search ${rows.length} contacts`} value={q} onChangeText={setQ} />
-            <Card padded={false}>
-              {visible.map((r) => <CheckRow key={r.id} checked={!!picked[r.id]} onToggle={() => setPicked((p) => ({ ...p, [r.id]: !p[r.id] }))} title={r.name} subtitle={[r.title, r.company, r.email].filter(Boolean).join(' · ') || undefined} />)}
-            </Card>
-          </>
-        ) : null}
-      </Screen>
-    </>
+    <Screen footer={n && !done ? <Button variant="primary" size="sm" fullWidth label={busy ? 'Importing…' : `Import ${n} card${n === 1 ? '' : 's'}`} disabled={busy} onPress={run} /> : undefined}>
+      <ScreenHeader left={<Back />} title="Choose phone contacts" subtitle="Only the people you pick are imported. Names, emails, and companies only; nothing is uploaded until you tap Import." />
+      {unsupported ? <Notice tone="cautionInk">Phone contacts are only available in the iOS and Android apps. Use a CSV import here.</Notice> : null}
+      {perm === 'denied' ? <Notice tone="cautionInk">Contacts permission is off. Allow it in system Settings to pick people here.</Notice> : null}
+      {error ? <Notice tone="dangerInk">{error}</Notice> : null}
+      {done ? <Section label="Done"><EmptyRow title={done} actionLabel="See your cards" onPress={() => router.replace('/network')} /></Section> : null}
+      {perm === 'granted' && !done ? (
+        <Section label={`${rows.length} contacts`}>
+          <Field label="Search" placeholder={`Search ${rows.length} contacts`} value={q} onChangeText={setQ} accessibilityLabel="Search contacts" />
+          {visible.length === 0 ? <EmptyRow title="No contacts match." /> : (
+            <Group>
+              {visible.map((r) => <Row key={r.id} title={r.name} titleVariant="rowName" subtitle={[r.title, r.company, r.email].filter(Boolean).join(' · ') || undefined} trailing={<Toggle value={!!picked[r.id]} accessibilityLabel={`Import ${r.name}`} onValueChange={() => setPicked((p) => ({ ...p, [r.id]: !p[r.id] }))} />} />)}
+            </Group>
+          )}
+        </Section>
+      ) : null}
+    </Screen>
   );
 }

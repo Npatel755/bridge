@@ -1,7 +1,8 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 
-import { Button, Card, Field, Notice, Screen, ScreenTitle, T, Tag, TagRow, TopBar } from '@/components';
+import { Button, Field, Group, Screen, ScreenHeader, Section, Tag, TagList } from '@/bridge-design-system';
+import { Notice, Stack } from '@/components/shared';
 import { errorMessage } from '@/lib/api';
 import { addClaims, addEvidence, createContact, splitList } from '@/lib/contacts-data';
 import { RELATIONSHIP_LABEL } from '@/lib/relationship';
@@ -40,32 +41,34 @@ export default function EditContact() {
   }
 
   return (
-    <>
-      <TopBar left={<Button variant="ghost" size="sm" title="Cancel" onPress={() => router.back()} />} title={id ? 'Edit card' : 'New card'} />
-      <Screen cta={<Button variant="primary" size="lg" title={id ? 'Save card' : 'Add to cards'} loading={busy} disabled={!f.name.trim()} onPress={save} />}>
-        <ScreenTitle title={id ? 'Edit card' : 'Add someone you know'} caption="Only you can see this card. What you write here is used as evidence, with “you added” as the source." />
-        <Card>
+    <Screen footer={<Button variant="primary" size="sm" fullWidth label={busy ? 'Saving…' : id ? 'Save card' : 'Add to cards'} disabled={busy || !f.name.trim()} onPress={save} />}>
+      <ScreenHeader left={<Button variant="ghost" size="sm" label="Cancel" onPress={() => router.back()} />} title={id ? 'Edit card' : 'Add someone you know'} subtitle="Only you can see this card. What you write here is used as evidence, with “you added” as the source." />
+      <Section label="Who they are">
+        <Stack>
           <Field label="Name" value={f.name} onChangeText={set('name')} autoFocus={!id} />
           <Field label="Role or headline" value={f.headline} onChangeText={set('headline')} placeholder="Embedded engineer" />
           <Field label="Company" value={f.company} onChangeText={set('company')} />
           <Field label="School" value={f.school} onChangeText={set('school')} />
           <Field label="City" value={f.location} onChangeText={set('location')} />
           <Field label="Email" value={f.email} onChangeText={set('email')} autoCapitalize="none" keyboardType="email-address" />
-        </Card>
-        <Card>
-          <T variant="label" color="inkSoft">How you know them</T>
-          <TagRow>{RELS.map((r) => <Tag key={r} label={RELATIONSHIP_LABEL[r] ?? r} state={f.relationship === r ? 'selected' : 'stated'} onPress={() => setF((x) => ({ ...x, relationship: r }))} />)}</TagRow>
+        </Stack>
+      </Section>
+      <Section label="How you know them">
+        <Stack>
+          <TagList>{RELS.map((r) => <Tag key={r} label={RELATIONSHIP_LABEL[r] ?? r} variant={f.relationship === r ? 'selected' : 'stated'} onPress={() => setF((x) => ({ ...x, relationship: r }))} />)}</TagList>
           <Field label="How you met" value={f.how_met} onChangeText={set('how_met')} placeholder="Hackathon, class, through Jordan…" />
           <Field label="When (YYYY-MM-DD)" value={f.met_at} onChangeText={set('met_at')} placeholder="2026-10-12" autoCapitalize="none" />
-        </Card>
-        {!id ? (
-          <Card>
+        </Stack>
+      </Section>
+      {!id ? (
+        <Section label="What they know">
+          <Group>
             <Field label="Skills (comma separated)" value={f.skills} onChangeText={set('skills')} placeholder="Embedded systems, PCB design" />
             <Field label="Interests (comma separated)" value={f.interests} onChangeText={set('interests')} placeholder="Cycling, startups" />
-          </Card>
-        ) : null}
-        {error ? <Notice>{error}</Notice> : null}
-      </Screen>
-    </>
+          </Group>
+        </Section>
+      ) : null}
+      {error ? <Notice tone="dangerInk">{error}</Notice> : null}
+    </Screen>
   );
 }

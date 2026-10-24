@@ -1,17 +1,17 @@
 import type { TeamRole } from '@bridge/core';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
 
-import { Button, Card, Field, Flag, Loading, Notice, ResultCard, Row, Screen, T, Tag, TagRow, TopBar } from '@/components';
-import { useTheme } from '@/constants/theme';
+import { Button, EmptyRow, Evidence, Field, Group, PersonCard, Row, Screen, ScreenHeader, Section, Tag, TagList, useTheme } from '@/bridge-design-system';
+import { Back, Loading, Notice, Stack, surnameInitial } from '@/components/shared';
+import { routeInfo } from '@/lib/relationship';
 import { api, errorMessage, type TeamResponse } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 
 type EditableRole = Pick<TeamRole, 'title' | 'tags'>;
 
 export default function Team() {
-  const { colors, space } = useTheme();
+  useTheme();
   const params = useLocalSearchParams<{ description?: string; id?: string }>();
   const [description, setDescription] = useState(params.description ?? '');
   const [plan, setPlan] = useState<TeamResponse | null>(null);
@@ -35,70 +35,70 @@ export default function Team() {
   const filled = plan?.roles.filter((r) => r.filled) ?? [];
   const title = description.length > 40 ? description.slice(0, 40).replace(/\s\S*$/, '') + '…' : description;
 
+  const ctaDraft = () => router.push({ pathname: '/draft', params: { contactId: filled.map((r) => r.candidates[0].contactId).join(','), ask: filled.map((r) => r.candidates[0].suggestedAsk).join('|') } });
   return (
-    <>
-      <TopBar onBack={() => router.back()} right={plan && !editing ? <Button variant="ghost" size="sm" title="Edit roles" onPress={() => setEditing(true)} /> : null} />
-      <Screen cta={plan && filled.length && !editing ? <Button variant="primary" size="lg" title={`Draft asks for all ${filled.length}`} onPress={() => router.push({ pathname: '/draft', params: { contactId: filled.map((r) => r.candidates[0].contactId).join(','), ask: filled.map((r) => r.candidates[0].suggestedAsk).join('|') } })} /> : !plan ? <Button variant="primary" size="lg" title="Find my team" loading={busy} disabled={!description.trim()} onPress={() => run()} /> : undefined}>
-        <T variant="caption" color="inkSoft">Build my team</T>
-        {plan && !editing ? <T variant="display" accessibilityRole="header">{title}</T> : <T variant="display" accessibilityRole="header">What are you building?</T>}
-        {!plan || editing ? <Field value={description} onChangeText={setDescription} multiline placeholder="A smart bike light with a companion app, sold to commuters" /> : null}
-        {plan && !editing ? <T variant="body" color="inkSoft">{plan.roles.length} kinds of help. {filled.length} have someone from your cards.</T> : null}
-        {busy ? <Loading label="Splitting the project into roles and matching your cards…" /> : null}
-        {error ? <Notice>{error}</Notice> : null}
+    <Screen footer={plan && filled.length && !editing ? <Button variant="primary" size="sm" fullWidth label={`Draft asks for all ${filled.length}`} onPress={ctaDraft} /> : undefined}>
+      <ScreenHeader left={<Back />} right={plan && !editing ? <Button variant="ghost" size="sm" label="Edit roles" onPress={() => setEditing(true)} /> : undefined}
+        title={plan && !editing ? title : 'Build a team'} subtitle={plan && !editing ? `${plan.roles.length} kinds of help. ${filled.length} have someone from your cards. ${plan.mode === 'llm' ? 'Roles suggested with AI, matches from your cards.' : 'Roles from keyword rules, matches from your cards.'}` : 'Describe what you want to build. Bridge splits it into roles and looks for each in your cards.'} />
+      {!plan || editing ? (
+        <Section label="Your idea">
+          <Stack>
+            <Field label="What you are building" value={description} onChangeText={setDescription} multiline placeholder="A smart bike light with a companion app, sold to commuters" accessibilityLabel="Your idea" />
+            {!editing ? <Button variant="primary" size="sm" fullWidth label={busy ? 'Matching…' : 'Find roles and people'} disabled={!description.trim() || busy} onPress={() => run()} /> : null}
+          </Stack>
+        </Section>
+      ) : null}
+      {busy ? <Loading label="Splitting the project into roles and matching your cards…" /> : null}
+      {error ? <Notice tone="dangerInk">{error}</Notice> : null}
 
-        {editing ? (
-          <Card>
-            <T variant="name">Roles</T>
-            {roles.map((r, i) => (
-              <Row key={i} between>
-                <View style={{ flex: 1 }}><T variant="body">{r.title}</T><T variant="caption" color="inkSoft">{r.tags.join(', ')}</T></View>
-                <Button variant="ghost" size="sm" title="Remove" onPress={() => setRoles((x) => x.filter((_, j) => j !== i))} />
-              </Row>
-            ))}
-            <Row><View style={{ flex: 1 }}><Field placeholder="Add a role, e.g. Cyclists to test it" value={newRole} onChangeText={setNewRole} /></View><Button size="sm" title="Add" disabled={!newRole.trim()} onPress={() => { setRoles((x) => [...x, { title: newRole.trim(), tags: [newRole.trim().toLowerCase().replace(/\s+/g, '-')] }]); setNewRole(''); }} /></Row>
-            <Button variant="primary" title="Match these roles" loading={busy} onPress={() => run(roles)} />
-          </Card>
-        ) : null}
+      {editing ? (
+        <Section label="Roles">
+          <Stack>
+            <Group>
+              {roles.map((r, i) => <Row key={i} title={r.title} titleVariant="label" subtitle={r.tags.join(', ')} trailing={<Button variant="ghost" size="sm" label="Remove" onPress={() => setRoles((x) => x.filter((_, j) => j !== i))} />} />)}
+            </Group>
+            <Field label="Role" placeholder="Add a role, e.g. Cyclists to test it" value={newRole} onChangeText={setNewRole} accessibilityLabel="Add a role" />
+            <Button size="sm" fullWidth label="Add role" disabled={!newRole.trim()} onPress={() => { setRoles((x) => [...x, { title: newRole.trim(), tags: [newRole.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-')] }]); setNewRole(''); }} />
+            <Button variant="primary" size="sm" fullWidth label={busy ? 'Matching…' : 'Match these roles'} disabled={busy} onPress={() => run(roles)} />
+          </Stack>
+        </Section>
+      ) : null}
 
-        {plan && !editing ? (
-          <>
-            <Flag label={plan.mode === 'llm' ? 'Roles suggested with AI, matches from your cards' : 'Roles from keyword rules, matches from your cards'} />
-            {plan.roles.map((m) => (
-              <View key={m.role.id} style={{ marginTop: space[2] }}>
-                <Row between style={{ marginBottom: space[2] }}>
-                  <T variant="label" style={{ color: m.filled ? colors.ink : colors.inkSoft }}>{m.role.title}</T>
-                  <Flag label={m.filled ? 'Someone from your cards' : 'Open'} tone={m.filled ? 'default' : 'caution'} />
-                </Row>
-                {m.filled ? (
-                  <View>
-                    <ResultCard rec={m.candidates[0]} ask={m.candidates[0].suggestedAsk} expanded showNotes={false} />
-                    {m.candidates.length > 1 ? <TagRow>{m.candidates.slice(1, 4).map((c) => <Tag key={c.contactId} label={`Also: ${c.name}`} onPress={() => router.push({ pathname: '/contact/[id]', params: { id: c.contactId } })} />)}</TagRow> : null}
-                  </View>
+      {plan && !editing ? (
+        <>
+          {plan.roles.map((m) => {
+            const c = m.candidates[0];
+            const cite = c?.citations.find((x) => x.excerpt) ?? c?.citations[0];
+            const excerpt = cite?.excerpt ?? cite?.value ?? c?.why ?? '';
+            return (
+              <Section key={m.role.id} label={m.role.title} action={<Tag label={m.filled ? 'Someone from your cards' : 'Open'} variant={m.filled ? 'stated' : 'suggested'} />}>
+                {m.filled && c ? (
+                  <Stack>
+                    <PersonCard name={c.name} role={c.headline ?? c.howYouKnow} tab={surnameInitial(c.name)} tabTone="highlight" route={routeInfo(c.route, { howYouKnow: c.howYouKnow })}>
+                      {excerpt ? <Evidence quote={excerpt} marks={c.matchedTags.map((t) => t.label).filter((l) => excerpt.toLowerCase().includes(l.toLowerCase()))} source={`${cite?.sourceLabel ?? 'Your note'}${cite?.date ? `, ${cite.date.slice(0, 10)}` : ''} · private to you`} /> : null}
+                      <Row title={c.suggestedAsk} titleVariant="note" overline="Suggested ask" />
+                      <Button size="sm" variant="primary" label="Open card" onPress={() => router.push({ pathname: '/contact/[id]', params: { id: c.contactId } })} />
+                    </PersonCard>
+                    {m.candidates.length > 1 ? <TagList>{m.candidates.slice(1, 4).map((x) => <Tag key={x.contactId} label={`Also: ${x.name}`} onPress={() => router.push({ pathname: '/contact/[id]', params: { id: x.contactId } })} />)}</TagList> : null}
+                  </Stack>
                 ) : (
-                  <Card dashed>
-                    <T variant="body">No one in your cards mentions {m.role.tags.slice(0, 2).map((t) => t.replace(/-/g, ' ')).join(' or ')} yet.</T>
-                    <Row wrap>
-                      <Button size="sm" title="Ask your cards who they know" onPress={() => router.push({ pathname: '/ask', params: { q: `Who could introduce me to someone who knows ${m.role.tags[0]?.replace(/-/g, ' ')}?` } })} />
-                      <Button variant="ghost" size="sm" title="Add a note" onPress={() => router.push('/note/new')} />
-                    </Row>
-                  </Card>
+                  <Group dashed>
+                    <EmptyRow title={`No one in your cards mentions ${m.role.tags.slice(0, 2).map((t) => t.replace(/-/g, ' ')).join(' or ')} yet.`} actionLabel="Ask who they know" onPress={() => router.push({ pathname: '/ask', params: { q: `Who could introduce me to someone who knows ${m.role.tags[0]?.replace(/-/g, ' ')}?` } })} />
+                    <Row title="Add a note about someone" titleVariant="label" chevron onPress={() => router.push('/note/new')} />
+                  </Group>
                 )}
-              </View>
-            ))}
-            {plan.reciprocal.length ? (
-              <View style={{ gap: space[2], marginTop: space[4] }}>
-                <T variant="title">You could help too</T>
-                {plan.reciprocal.slice(0, 3).map((o) => (
-                  <Card key={o.contactId}>
-                    <T variant="note">{o.name.split(' ')[0]} wants {o.youCanHelp[0]?.need.toLowerCase()}. You offer {o.youCanHelp[0]?.yourMatch.join(', ')}.</T>
-                    <T variant="caption" color="inkSoft">Their goal, {o.youCanHelp[0]?.source}, {o.youCanHelp[0]?.date.slice(0, 10)}. Your offer, your profile.</T>
-                  </Card>
-                ))}
-              </View>
-            ) : null}
-          </>
-        ) : null}
-      </Screen>
-    </>
+              </Section>
+            );
+          })}
+          {plan.reciprocal.length ? (
+            <Section label="You could help too">
+              <Group>
+                {plan.reciprocal.slice(0, 3).map((o) => <Row key={o.contactId} title={`${o.name.split(' ')[0]} wants ${o.youCanHelp[0]?.need.toLowerCase()}. You offer ${o.youCanHelp[0]?.yourMatch.join(', ')}.`} titleVariant="note" subtitle={`Their goal, ${o.youCanHelp[0]?.source}, ${o.youCanHelp[0]?.date.slice(0, 10)}.`} chevron onPress={() => router.push({ pathname: '/contact/[id]', params: { id: o.contactId } })} />)}
+              </Group>
+            </Section>
+          ) : null}
+        </>
+      ) : null}
+    </Screen>
   );
 }

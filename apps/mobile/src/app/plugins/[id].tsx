@@ -3,10 +3,9 @@ import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { View } from 'react-native';
 
-import { Button, Card, CardSection, EntryCard, Flag, Loading, Notice, Row, Screen, ScreenTitle, Sheet, T, Tag, TagRow, TopBar } from '@/components';
-import { useTheme } from '@/constants/theme';
+import { BText, Button, EmptyRow, Group, PersonRow, Row, Screen, ScreenHeader, Section, Tag, TagList } from '@/bridge-design-system';
+import { Back, Loading, Notice, Stack, surnameInitial } from '@/components/shared';
 import { useAsync } from '@/hooks/use-async';
 import { api, errorMessage } from '@/lib/api';
 import type { PluginList } from '@/app/plugins';
@@ -17,7 +16,6 @@ interface Preview { jobId: string; accountId: string; preview: PreviewPerson[]; 
 const REL_LABEL: Record<string, string> = { mutual_connection: 'Mutual connection', follower: 'Follows you', following: 'You follow', personal: 'Personal (needs confirmation)', colleague: 'Colleague (needs confirmation)', unknown: 'Unknown' };
 
 export default function PluginDetail() {
-  const { colors, space } = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const list = useAsync(() => api.plugins<PluginList>({ action: 'list' }), [id]);
   const [file, setFile] = useState<{ name: string; text: string } | null>(null);
@@ -71,99 +69,105 @@ export default function PluginDetail() {
   const counts = preview ? { create: preview.preview.filter((p) => accept[keyFor(p)] && !(p.duplicate?.strength === 'strong')).length, merge: preview.preview.filter((p) => accept[keyFor(p)] && p.duplicate?.strength === 'strong').length, review: preview.preview.filter((p) => p.duplicate && !accept[keyFor(p)]).length } : null;
   const accepted = Object.values(accept).filter(Boolean).length;
 
+  const footer = preview && !done ? <Button variant="primary" size="sm" fullWidth label={busy === 'import' ? 'Importing…' : `Import ${accepted} card${accepted === 1 ? '' : 's'}`} disabled={!accepted || !!busy} onPress={runImport} />
+    : isFile && file && !preview && !done ? <Button variant="primary" size="sm" fullWidth label={busy === 'preview' ? 'Reading…' : 'Preview this file'} disabled={!!busy} onPress={runPreview} /> : undefined;
   return (
-    <>
-      <TopBar onBack={() => router.back()} title="Plugins" />
-      <Screen cta={preview && !done ? <Button variant="primary" size="lg" title={`Import ${accepted} card${accepted === 1 ? '' : 's'}`} loading={busy === 'import'} disabled={!accepted} onPress={runImport} /> : isFile && file && !preview && !done ? <Button variant="primary" size="lg" title="Preview this file" loading={busy === 'preview'} onPress={runPreview} /> : undefined}>
-        {!plugin && list.loading ? <Loading /> : null}
-        {plugin ? (
-          <>
-            <Flag label={isFile ? 'Export importer, not a live connection' : isLinkedInApi ? 'Verifies your own profile only' : 'Community connector, runs on the server'} />
-            <ScreenTitle title={plugin.name.replace('LinkedIn export', 'Import from LinkedIn')} caption={file && preview ? `${file.name}, ${preview.stats.people} people. Nothing is saved until you import.` : plugin.description} />
-            {error ? <Notice>{error}</Notice> : null}
-            {done ? <Card><T variant="body">{done}</T><Button size="sm" title="See your cards" onPress={() => router.replace('/network')} style={{ alignSelf: 'flex-start' }} /></Card> : null}
+    <Screen footer={footer}>
+      <ScreenHeader left={<Back />} title={plugin ? plugin.name.replace('LinkedIn export', 'Import from LinkedIn') : 'Plugin'}
+        subtitle={plugin ? (file && preview ? `${file.name}, ${preview.stats.people} people. Nothing is saved until you import.` : `${plugin.description} ${isFile ? 'Export importer, not a live connection.' : isLinkedInApi ? 'Verifies your own profile only.' : 'Community connector, runs on the server.'}`) : undefined} />
+      {!plugin && list.loading ? <Loading /> : null}
+      {error ? <Notice tone="dangerInk">{error}</Notice> : null}
+      {done ? <Section label="Done"><EmptyRow title={done} actionLabel="See your cards" onPress={() => router.replace('/network')} /></Section> : null}
+      {plugin ? (
+        <>
+          {isFile && !preview && !done ? (
+            <>
+              <Section label="What a LinkedIn export has">
+                <Group>
+                  {[['Names', true], ['Profile links', true], ['Companies', true], ['Titles', true], ['Skills: not included', false], ['Followers: not available', false]].map(([l, ok]) => <Row key={String(l)} title={`${ok ? '✓' : '–'} ${l}`} titleVariant="label" />)}
+                </Group>
+                <BText variant="caption" color="inkFaint">Imported cards are marked “LinkedIn export” and stay private to you. Titles become suggested tags, not confirmed skills.</BText>
+              </Section>
+              <Section label="Your file">
+                <Stack>
+                  <BText variant="secondary" color="inkSoft">In LinkedIn: Settings → Data privacy → Get a copy of your data → Connections. Upload the Connections.csv here.</BText>
+                  <Button size="sm" fullWidth variant={file ? 'secondary' : 'primary'} label={file ? `Chosen: ${file.name}` : 'Choose Connections.csv'} onPress={pick} />
+                </Stack>
+              </Section>
+            </>
+          ) : null}
 
-            {isFile && !preview && !done ? (
-              <>
-                <Card>
-                  <T variant="name">What a LinkedIn export has</T>
-                  <View style={{ gap: space[1] }}>
-                    {[['Names', true], ['Profile links', true], ['Companies', true], ['Titles', true], ['Skills: not included', false], ['Followers: not available', false]].map(([l, ok]) => <T key={String(l)} variant="body" color={ok ? 'ink' : 'inkSoft'}>{ok ? '✓' : '–'} {l}</T>)}
-                  </View>
-                  <T variant="caption" color="inkSoft">Imported cards are marked “LinkedIn export” and stay private to you. Titles become suggested tags, not confirmed skills. Add notes later to fill in what people are good at.</T>
-                </Card>
-                <Card>
-                  <T variant="body">In LinkedIn: Settings → Data privacy → Get a copy of your data → Connections. Upload the Connections.csv here.</T>
-                  <Button variant={file ? 'secondary' : 'primary'} title={file ? `Chosen: ${file.name}` : 'Choose Connections.csv'} onPress={pick} />
-                </Card>
-              </>
-            ) : null}
+          {isLinkedInApi ? (
+            <Section label="Sign in with LinkedIn">
+              <Stack>
+                <BText variant="body">LinkedIn&apos;s public API does not share your connections with apps. Sign in with LinkedIn can only confirm that a LinkedIn profile is yours.</BText>
+                {list.data?.env.linkedinOAuth ? <Button size="sm" fullWidth label="Verify my LinkedIn profile" onPress={() => setError('OAuth verification is wired on the server but not enabled in this build.')} /> : <Notice tone="cautionInk">Not configured on this deployment (LINKEDIN_CLIENT_ID is missing). The export importer works without it.</Notice>}
+              </Stack>
+            </Section>
+          ) : null}
 
-            {isLinkedInApi ? (
-              <Card>
-                <T variant="body">LinkedIn&apos;s public API does not share your connections with apps. Sign in with LinkedIn can only confirm that a LinkedIn profile is yours.</T>
-                {list.data?.env.linkedinOAuth ? <Button title="Verify my LinkedIn profile" onPress={() => setError('OAuth verification is wired on the server but not enabled in this build.')} /> : <Notice>Not configured on this deployment (LINKEDIN_CLIENT_ID is missing). The export importer works without it.</Notice>}
-              </Card>
-            ) : null}
+          {!isFile && !isLinkedInApi && !preview && !done ? (
+            <Section label="How it works">
+              <Stack>
+                <BText variant="body">This connector returns people and relationships as JSON. Bridge checks every record, keeps followers separate from people you know, and never treats a follow as expertise.</BText>
+                {plugin.manifest.limitations?.map((l, i) => <BText key={i} variant="secondary" color="inkSoft">• {l}</BText>)}
+                <Button size="sm" fullWidth variant="primary" label={busy === 'preview' ? 'Reading…' : 'Preview what it would import'} disabled={!!busy} onPress={runPreview} />
+              </Stack>
+            </Section>
+          ) : null}
 
-            {!isFile && !isLinkedInApi && !preview && !done ? (
-              <Card>
-                <T variant="body">This connector returns people and relationships as JSON. Bridge checks every record, keeps followers separate from people you know, and never treats a follow as expertise.</T>
-                {plugin.manifest.limitations?.map((l, i) => <T key={i} variant="caption" color="inkSoft">• {l}</T>)}
-                <Button variant="primary" title="Preview what it would import" loading={busy === 'preview'} onPress={runPreview} />
-              </Card>
-            ) : null}
-
-            {preview && counts ? (
-              <>
-                <Row>
-                  {[{ n: counts.create, l: 'new cards' }, { n: counts.merge, l: 'add to cards' }, { n: counts.review, l: 'to review' }].map((c) => (
-                    <Card key={c.l} style={{ flex: 1, backgroundColor: c.l === 'to review' && c.n ? colors.cautionWash : colors.card }}><T variant="title">{c.n}</T><T variant="caption" color={c.l === 'to review' && c.n ? 'cautionInk' : 'inkSoft'}>{c.l}</T></Card>
+          {preview && counts ? (
+            <>
+              <Section label="What would happen">
+                <Group>
+                  <Row title={`${counts.create} new cards`} titleVariant="label" />
+                  <Row title={`${counts.merge} added to existing cards`} titleVariant="label" />
+                  <Row title={`${counts.review} to review`} titleVariant="label" subtitle={counts.review ? 'Name-only matches are skipped unless you choose.' : undefined} subtitleColor="cautionInk" />
+                </Group>
+                <TagList>
+                  <Tag label={`${preview.stats.followers} follower-only, never warm routes`} />
+                  {preview.stats.rejected ? <Tag label={`${preview.stats.rejected} rejected by validation`} variant="suggested" /> : null}
+                  {preview.edges.length ? <Tag label={`${preview.edges.length} links, unconfirmed`} /> : null}
+                </TagList>
+                {preview.warnings.map((w, i) => <Notice key={i} tone="cautionInk">{w}</Notice>)}
+              </Section>
+              {preview.preview.some((p) => p.duplicate) ? (
+                <Section label="Is this the same person?">
+                  <Group dashed>
+                    {preview.preview.filter((p) => p.duplicate).map((p) => {
+                      const k = keyFor(p); const d = p.duplicate!;
+                      const reason = d.kind === 'email' ? 'Same email' : d.kind === 'profile_url' ? 'Same profile link' : d.kind === 'name_and_company' ? 'Same name and company' : 'Name only';
+                      return <Row key={k} title={p.name} titleVariant="rowName" overline={reason} subtitle={d.strength === 'strong' ? 'Strong match with one of your cards. Importing adds this record to that card.' : 'Only the name matches. Importing creates a separate card; leave it skipped to decide later.'}
+                        trailing={<Button size="sm" variant={accept[k] ? 'primary' : 'secondary'} label={accept[k] ? (d.strength === 'strong' ? 'Adding' : 'New card') : 'Skipped'} onPress={() => setAccept((a) => ({ ...a, [k]: !a[k] }))} />} />;
+                    })}
+                  </Group>
+                </Section>
+              ) : null}
+              <Section label="Preview">
+                <Group>
+                  {preview.preview.filter((p) => !p.duplicate).slice(0, 10).map((p) => (
+                    <PersonRow key={keyFor(p)} name={p.name} reason={[p.headline, p.company].filter(Boolean).join(', ') || 'No headline'} overline={accept[keyFor(p)] ? 'Will import' : 'Skipped'} route={{ kind: 'suggested', label: REL_LABEL[p.relationship] ?? p.relationship }} tab={surnameInitial(p.name)} onPress={() => setAccept((a) => ({ ...a, [keyFor(p)]: !a[keyFor(p)] }))} />
                   ))}
-                </Row>
-                <TagRow>
-                  <Flag label={`${preview.stats.followers} follower-only records, never shown as warm routes`} />
-                  {preview.stats.rejected ? <Flag label={`${preview.stats.rejected} rejected by validation`} tone="caution" /> : null}
-                  {preview.edges.length ? <Flag label={`${preview.edges.length} links between people, marked unconfirmed`} /> : null}
-                </TagRow>
-                {preview.warnings.map((w, i) => <T key={i} variant="caption" color="cautionInk">{w}</T>)}
-                {preview.preview.some((p) => p.duplicate) ? <T variant="title">Is this the same person?</T> : null}
-                {preview.preview.filter((p) => p.duplicate).map((p) => {
-                  const k = keyFor(p); const d = p.duplicate!;
-                  const reason = d.kind === 'email' ? 'Same email' : d.kind === 'profile_url' ? 'Same profile link' : d.kind === 'name_and_company' ? 'Same name and company' : 'Name only';
-                  return (
-                    <EntryCard key={k} name={p.name} role={[p.headline, p.company].filter(Boolean).join(', ')} headRight={<T variant="label" style={{ color: d.strength === 'strong' ? colors.confirmInk : colors.cautionInk }}>{reason}</T>}>
-                      <CardSection>
-                        <T variant="caption" color="inkSoft">{d.strength === 'strong' ? 'Strong match with one of your cards. Importing adds this record to that card.' : 'Only the name matches. Importing will create a separate card; leave it unchecked to decide later.'}</T>
-                        <Row><Button size="sm" variant={accept[k] ? 'primary' : 'secondary'} title={d.strength === 'strong' ? 'Add to their card' : 'New card'} onPress={() => setAccept((a) => ({ ...a, [k]: true }))} /><Button size="sm" variant="ghost" title={accept[k] ? 'Skip' : 'Skipped'} onPress={() => setAccept((a) => ({ ...a, [k]: false }))} /></Row>
-                      </CardSection>
-                    </EntryCard>
-                  );
-                })}
-                <T variant="title">Preview</T>
-                {preview.preview.filter((p) => !p.duplicate).slice(0, 10).map((p, i) => (
-                  <EntryCard key={keyFor(p)} name={p.name} role={[p.headline, p.company].filter(Boolean).join(', ')} route={{ kind: 'suggested', label: REL_LABEL[p.relationship] ?? p.relationship }} collapsed tabOffset={Math.min(i, 3) * 44} onPress={() => setAccept((a) => ({ ...a, [keyFor(p)]: !a[keyFor(p)] }))} accessibilityLabel={`${p.name}, ${accept[keyFor(p)] ? 'will be imported' : 'skipped'}. Tap to toggle.`} />
-                ))}
-                {preview.preview.some((p) => p.suggestedTags?.length) ? <TagRow>{preview.preview.flatMap((p) => p.suggestedTags ?? []).slice(0, 8).map((t, i) => <Tag key={i} label={t.label} state="suggested" />)}</TagRow> : null}
-                {preview.rejected.length ? <T variant="caption" color="inkSoft">Rejected rows: {preview.rejected.slice(0, 5).map((r) => `#${r.index} ${r.reason}`).join('; ')}</T> : null}
-              </>
-            ) : null}
+                </Group>
+                {preview.preview.some((p) => p.suggestedTags?.length) ? <TagList>{preview.preview.flatMap((p) => p.suggestedTags ?? []).slice(0, 8).map((t, i) => <Tag key={i} label={t.label} variant="suggested" />)}</TagList> : null}
+                {preview.rejected.length ? <BText variant="caption" color="inkFaint">Rejected rows: {preview.rejected.slice(0, 5).map((r) => `#${r.index} ${r.reason}`).join('; ')}</BText> : null}
+              </Section>
+            </>
+          ) : null}
 
-            {account ? (
-              <Card style={{ marginTop: space[3] }}>
-                <T variant="name">Connection</T>
-                <T variant="caption" color="inkSoft">{account.display_label} · {account.status}{account.last_sync_at ? ` · last import ${new Date(account.last_sync_at).toLocaleString()}` : ''}</T>
-                {account.last_error ? <Notice>{account.last_error}</Notice> : null}
-                <Button variant="danger" title="Disconnect and remove imported data" onPress={() => setConfirm('disconnect')} />
-              </Card>
-            ) : null}
-            <Sheet visible={confirm === 'disconnect'} onClose={() => setConfirm(null)} title={`Disconnect ${plugin.name}?`}>
-              <T variant="body" color="inkSoft">Removes stored credentials and every card that exists only because of this import. Cards you have added notes to are kept, and the imported evidence on them is removed.</T>
-              <Button variant="danger" title="Disconnect" loading={busy === 'disconnect'} onPress={disconnect} />
-            </Sheet>
-          </>
-        ) : null}
-      </Screen>
-    </>
+          {account ? (
+            <Section label="Connection">
+              <Stack>
+                <BText variant="secondary" color="inkSoft">{account.display_label} · {account.status}{account.last_sync_at ? ` · last import ${new Date(account.last_sync_at).toLocaleString()}` : ''}</BText>
+                {account.last_error ? <Notice tone="dangerInk">{account.last_error}</Notice> : null}
+                {confirm === 'disconnect' ? <BText variant="secondary" color="inkSoft">Removes stored credentials and every card that exists only because of this import. Cards you have added notes to are kept, and the imported evidence on them is removed.</BText> : null}
+                {confirm === 'disconnect' ? <Button size="sm" fullWidth variant="danger" label={busy === 'disconnect' ? 'Disconnecting…' : 'Yes, disconnect'} disabled={!!busy} onPress={disconnect} /> : null}
+                <Button size="sm" fullWidth variant={confirm ? 'ghost' : 'danger'} label={confirm ? 'Keep connection' : 'Disconnect and remove imported data'} onPress={() => setConfirm(confirm ? null : 'disconnect')} />
+              </Stack>
+            </Section>
+          ) : null}
+        </>
+      ) : null}
+    </Screen>
   );
 }

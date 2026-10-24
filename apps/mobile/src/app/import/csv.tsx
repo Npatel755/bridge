@@ -3,10 +3,9 @@ import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { View } from 'react-native';
 
-import { Button, Card, CardSection, EntryCard, Flag, Notice, Row, Screen, ScreenTitle, T, Tag, TagRow, TopBar } from '@/components';
-import { useTheme } from '@/constants/theme';
+import { BText, Button, EmptyRow, Group, PersonRow, Row, Screen, ScreenHeader, Section, Tag, TagList } from '@/bridge-design-system';
+import { Back, Notice, Stack, surnameInitial } from '@/components/shared';
 import { errorMessage } from '@/lib/api';
 import { addClaims, addEvidence, createContact } from '@/lib/contacts-data';
 import { useSession } from '@/lib/session';
@@ -16,7 +15,6 @@ const FIELD_LABEL: Record<ContactField, string> = { firstName: 'First name', las
 const MAX_BYTES = 5_000_000;
 
 export default function ImportCsv() {
-  const { colors, space } = useTheme();
   const { session } = useSession();
   const [fileName, setFileName] = useState<string | null>(null);
   const [rows, setRows] = useState<string[][]>([]);
@@ -76,58 +74,61 @@ export default function ImportCsv() {
   }
 
   return (
-    <>
-      <TopBar onBack={() => router.back()} title="Import" />
-      <Screen cta={mapped.length && !done ? <Button variant="primary" size="lg" title={`Import ${counts.create + counts.merge} card${counts.create + counts.merge === 1 ? '' : 's'}`} loading={busy} disabled={!counts.create && !counts.merge} onPress={run} /> : undefined}>
-        <Flag label="File import, stays private to you" />
-        <ScreenTitle title="Import a CSV" caption={fileName ? `${fileName}, ${mapped.length} people. Nothing is saved until you import.` : 'Any spreadsheet with names. You map the columns and review duplicates first.'} />
-        {error ? <Notice>{error}</Notice> : null}
-        {done ? <Card><T variant="body">{done}</T><Row><Button size="sm" title="See your cards" onPress={() => router.replace('/network')} /><Button variant="ghost" size="sm" title="Import another file" onPress={() => { setRows([]); setDone(null); setFileName(null); }} /></Row></Card> : null}
-        {!rows.length && !done ? <Button variant="primary" title="Choose a CSV file" onPress={pick} /> : null}
-        {rows.length && !done ? (
-          <>
-            <Card>
-              <T variant="name">Columns</T>
-              <T variant="caption" color="inkSoft">Tap a field to change which column feeds it. Unmapped fields are left blank.</T>
-              <TagRow>{CONTACT_FIELDS.map((f) => <Tag key={f} label={`${FIELD_LABEL[f]}: ${mapping[f] !== undefined ? headers[mapping[f]!] || `col ${mapping[f]! + 1}` : '—'}`} state={editingField === f ? 'selected' : mapping[f] !== undefined ? 'stated' : 'suggested'} onPress={() => setEditingField(editingField === f ? null : f)} />)}</TagRow>
+    <Screen footer={mapped.length && !done ? <Button variant="primary" size="sm" fullWidth label={busy ? 'Importing…' : `Import ${counts.create + counts.merge} card${counts.create + counts.merge === 1 ? '' : 's'}`} disabled={busy || (!counts.create && !counts.merge)} onPress={run} /> : undefined}>
+      <ScreenHeader left={<Back />} title="Import a CSV" subtitle={fileName ? `${fileName}, ${mapped.length} people. Nothing is saved until you import. Stays private to you.` : 'Any spreadsheet with names. You map the columns and review duplicates first. Stays private to you.'} />
+      {error ? <Notice tone="dangerInk">{error}</Notice> : null}
+      {done ? <Section label="Done"><Group><EmptyRow title={done} actionLabel="See your cards" onPress={() => router.replace('/network')} /><Row title="Import another file" titleVariant="label" chevron onPress={() => { setRows([]); setDone(null); setFileName(null); }} /></Group></Section> : null}
+      {!rows.length && !done ? <Section label="Your file"><Button variant="primary" size="sm" fullWidth label="Choose a CSV file" onPress={pick} /></Section> : null}
+      {rows.length && !done ? (
+        <>
+          <Section label="Columns">
+            <Stack>
+              <BText variant="secondary" color="inkSoft">Tap a field to change which column feeds it. Unmapped fields are left blank.</BText>
+              <TagList>{CONTACT_FIELDS.map((f) => <Tag key={f} label={`${FIELD_LABEL[f]}: ${mapping[f] !== undefined ? headers[mapping[f]!] || `col ${mapping[f]! + 1}` : '—'}`} variant={editingField === f ? 'selected' : mapping[f] !== undefined ? 'stated' : 'suggested'} onPress={() => setEditingField(editingField === f ? null : f)} />)}</TagList>
               {editingField ? (
-                <View style={{ gap: space[1] }}>
-                  <T variant="label" color="inkSoft">Column for {FIELD_LABEL[editingField]}</T>
-                  <TagRow>
-                    <Tag label="None" state={mapping[editingField] === undefined ? 'selected' : 'stated'} onPress={() => { setMapping((m) => { const n = { ...m }; delete n[editingField]; return n; }); setEditingField(null); }} />
-                    {headers.map((h, i) => <Tag key={i} label={h || `col ${i + 1}`} state={mapping[editingField] === i ? 'selected' : 'stated'} onPress={() => { setMapping((m) => ({ ...m, [editingField]: i })); setEditingField(null); }} />)}
-                  </TagRow>
-                </View>
+                <Group dashed>
+                  <Row title={`Column for ${FIELD_LABEL[editingField]}`} titleVariant="label" />
+                  <Row title={<TagList>
+                    <Tag label="None" variant={mapping[editingField] === undefined ? 'selected' : 'stated'} onPress={() => { setMapping((m) => { const n = { ...m }; delete n[editingField]; return n; }); setEditingField(null); }} />
+                    {headers.map((h, i) => <Tag key={i} label={h || `col ${i + 1}`} variant={mapping[editingField] === i ? 'selected' : 'stated'} onPress={() => { setMapping((m) => ({ ...m, [editingField]: i })); setEditingField(null); }} />)}
+                  </TagList>} />
+                </Group>
               ) : null}
-            </Card>
-            <Row>
-              {[{ n: counts.create, l: 'new cards' }, { n: counts.merge, l: 'add to cards' }, { n: counts.review, l: 'to review' }].map((c) => (
-                <Card key={c.l} style={{ flex: 1, backgroundColor: c.l === 'to review' && c.n ? colors.cautionWash : colors.card }}><T variant="title">{c.n}</T><T variant="caption" color={c.l === 'to review' && c.n ? 'cautionInk' : 'inkSoft'}>{c.l}</T></Card>
-              ))}
-            </Row>
-            {dupes.length ? <T variant="title">Is this the same person?</T> : null}
-            {mapped.filter((m) => dupeByRow.has(m.rowIndex)).slice(0, 30).map((m) => {
-              const d = dupeByRow.get(m.rowIndex)!; const ex = existing.find((e) => e.id === d.existingId); const dec = decision(m, d);
-              const reason = d.kind === 'email' ? 'Same email' : d.kind === 'profile_url' ? 'Same profile link' : d.kind === 'name_and_company' ? 'Same name and company' : `Name only${d.otherRowIndex !== null ? ', also in this file' : ''}`;
-              return (
-                <EntryCard key={m.rowIndex} name={m.displayName} role={[m.title, m.company].filter(Boolean).join(', ')} headRight={<T variant="label" style={{ color: d.strength === 'strong' ? colors.confirmInk : colors.cautionInk }}>{reason}</T>}>
-                  <CardSection>
-                    {ex ? <T variant="caption" color="inkSoft">Existing card: {ex.displayName}{ex.company ? `, ${ex.company}` : ''}</T> : <T variant="caption" color="inkSoft">Another row in this file has the same name.</T>}
-                    <Row wrap>
-                      {ex ? <Button size="sm" variant={dec === 'merge' ? 'primary' : 'secondary'} title={`Add to ${ex.displayName.split(' ')[0]}'s card`} onPress={() => setDecisions((x) => ({ ...x, [m.rowIndex]: 'merge' }))} /> : null}
-                      <Button size="sm" variant={dec === 'separate' ? 'primary' : 'secondary'} title="Keep separate" onPress={() => setDecisions((x) => ({ ...x, [m.rowIndex]: 'separate' }))} />
-                      <Button size="sm" variant={dec === 'skip' ? 'ghost' : 'ghost'} title={dec === 'skip' ? 'Skipped' : 'Skip'} onPress={() => setDecisions((x) => ({ ...x, [m.rowIndex]: 'skip' }))} />
-                    </Row>
-                  </CardSection>
-                </EntryCard>
-              );
-            })}
-            <T variant="title">Preview</T>
-            {mapped.slice(0, 8).map((m, i) => <EntryCard key={m.rowIndex} name={m.displayName} role={[m.title, m.company].filter(Boolean).join(', ')} collapsed tabOffset={Math.min(i, 3) * 44} />)}
-            {mapped.length > 8 ? <T variant="caption" color="inkSoft">and {mapped.length - 8} more. Rows without a name were dropped; links that are not http(s) were removed.</T> : null}
-          </>
-        ) : null}
-      </Screen>
-    </>
+            </Stack>
+          </Section>
+          <Section label="What would happen">
+            <Group>
+              <Row title={`${counts.create} new cards`} titleVariant="label" />
+              <Row title={`${counts.merge} added to existing cards`} titleVariant="label" />
+              <Row title={`${counts.review} to review`} titleVariant="label" subtitle={counts.review ? 'Decide below before importing.' : undefined} subtitleColor="cautionInk" />
+            </Group>
+          </Section>
+          {dupes.length ? (
+            <Section label="Is this the same person?">
+              <Stack>
+                {mapped.filter((m) => dupeByRow.has(m.rowIndex)).slice(0, 30).map((m) => {
+                  const d = dupeByRow.get(m.rowIndex)!; const ex = existing.find((e) => e.id === d.existingId); const dec = decision(m, d);
+                  const reason = d.kind === 'email' ? 'Same email' : d.kind === 'profile_url' ? 'Same profile link' : d.kind === 'name_and_company' ? 'Same name and company' : `Name only${d.otherRowIndex !== null ? ', also in this file' : ''}`;
+                  return (
+                    <Group key={m.rowIndex} dashed>
+                      <Row title={m.displayName} titleVariant="rowName" overline={reason} subtitle={ex ? `Existing card: ${ex.displayName}${ex.company ? `, ${ex.company}` : ''}` : 'Another row in this file has the same name.'} />
+                      <Row title={<TagList>
+                        {ex ? <Tag label={`Add to ${ex.displayName.split(' ')[0]}'s card`} variant={dec === 'merge' ? 'selected' : 'stated'} onPress={() => setDecisions((x) => ({ ...x, [m.rowIndex]: 'merge' }))} /> : null}
+                        <Tag label="Keep separate" variant={dec === 'separate' ? 'selected' : 'stated'} onPress={() => setDecisions((x) => ({ ...x, [m.rowIndex]: 'separate' }))} />
+                        <Tag label={dec === 'skip' ? 'Skipped' : 'Skip'} variant={dec === 'skip' ? 'selected' : 'suggested'} onPress={() => setDecisions((x) => ({ ...x, [m.rowIndex]: 'skip' }))} />
+                      </TagList>} />
+                    </Group>
+                  );
+                })}
+              </Stack>
+            </Section>
+          ) : null}
+          <Section label="Preview">
+            <Group>{mapped.slice(0, 8).map((m) => <PersonRow key={m.rowIndex} name={m.displayName} reason={[m.title, m.company].filter(Boolean).join(', ') || 'No headline'} route={{ kind: 'suggested', label: 'From this file' }} tab={surnameInitial(m.displayName)} />)}</Group>
+            {mapped.length > 8 ? <BText variant="caption" color="inkFaint">and {mapped.length - 8} more. Rows without a name were dropped; links that are not http(s) were removed.</BText> : null}
+          </Section>
+        </>
+      ) : null}
+    </Screen>
   );
 }

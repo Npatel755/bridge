@@ -5,8 +5,8 @@ import { Mic, Square } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, Pressable, TextInput, View } from 'react-native';
 
-import { Button, Card, CheckRow, Flag, MarkedText, Notice, RouteGlyph, Screen, T, Tag, TagRow, TopBar } from '@/components';
-import { useTheme } from '@/constants/theme';
+import { BText, Button, EmptyRow, Group, MarkedText, Row, RouteLine, Screen, ScreenHeader, Section, Tag, TagList, Toggle, useTheme } from '@/bridge-design-system';
+import { Notice, Stack } from '@/components/shared';
 import { api, errorMessage } from '@/lib/api';
 import { addClaims, addEvidence, createContact } from '@/lib/contacts-data';
 import { useSession } from '@/lib/session';
@@ -16,7 +16,7 @@ import { startDictation, voiceSupport } from '@/lib/voice';
 type Choice = { contactId: string | null; name: string } | null; // null = unchecked
 
 export default function NewNote() {
-  const { colors, fonts, space, radius } = useTheme();
+  const { colors, fonts, type, space, radius, sizes, layout } = useTheme();
   const { contactId } = useLocalSearchParams<{ contactId?: string }>();
   const { session } = useSession();
   const [text, setText] = useState('');
@@ -111,77 +111,83 @@ export default function NewNote() {
     } catch (e) { setError(errorMessage(e)); }
   }
 
-  const today = new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   const anyChecked = Object.values(choices).some(Boolean);
+  const voiceHint = listening ? 'Listening…' : recState.isRecording ? `Recording ${Math.round(recState.durationMillis / 1000)}s. Tap to stop.` : voiceNote ? 'Voice recording attached. Transcription is not available in this build, so type what was said.' : 'Private to you. Nothing is shared.';
   return (
-    <>
-      <TopBar left={<Button variant="ghost" size="sm" title="Cancel" onPress={() => router.back()} />} title="New note" right={<T variant="caption" color="inkSoft">{today}</T>} />
-      <Screen cta={<Button variant="primary" size="lg" title={found ? (anyChecked ? 'Save to cards' : 'Save note only') : 'Find people and skills'} loading={!!busy} disabled={!text.trim()} onPress={found ? save : extract} />}>
-        <Card style={{ paddingVertical: space[3] }}>
+    <Screen footer={<Button variant="primary" size="sm" fullWidth label={busy === 'extract' ? 'Reading…' : busy === 'save' ? 'Saving…' : found ? (anyChecked ? 'Save to cards' : 'Save note only') : 'Review note'} disabled={!!busy || !text.trim()} onPress={found ? save : extract} />}>
+      <ScreenHeader left={<Button variant="ghost" size="sm" label="Cancel" onPress={() => router.back()} />} title={found ? 'Review note' : 'New note'} subtitle={found ? `Uncheck anything that isn't right. ${found.mode === 'llm' ? 'Names and skills were checked by the deterministic extractor first.' : 'Found with keyword rules, not AI.'}` : 'Write what you remember. Bridge finds the people and skills; nothing is saved until you confirm.'} />
+      <Section label={found ? 'Your note' : 'What happened'}>
+        <View style={{ backgroundColor: colors.card, borderWidth: sizes.border, borderColor: colors.cardEdge, borderRadius: radius.card, padding: layout.cardPad, gap: space[2] }}>
           {found ? (
             <Pressable accessibilityRole="button" accessibilityLabel="Edit the note" onPress={() => setFound(null)} style={{ minHeight: 96 }}>
               <MarkedText text={text} marks={marks} />
             </Pressable>
           ) : (
             <TextInput accessibilityLabel="Note" value={text} onChangeText={setText} multiline autoFocus placeholder="Met Maya at a hackathon. She works on embedded systems, is interested in joining a startup, and knows Jordan, who manages a makerspace." placeholderTextColor={colors.inkFaint}
-              style={{ fontFamily: fonts.note, fontSize: 15, lineHeight: 24, color: colors.ink, minHeight: 120, textAlignVertical: 'top' }} />
+              style={{ fontFamily: fonts.note, fontSize: type.body.fontSize, lineHeight: type.body.lineHeight, color: colors.ink, minHeight: 140, textAlignVertical: 'top' }} />
           )}
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: space[2] }}>
-            <T variant="caption" color="inkSoft" style={{ flex: 1 }}>{listening ? 'Listening…' : recState.isRecording ? `Recording ${Math.round(recState.durationMillis / 1000)}s. Tap to stop.` : voiceNote ? 'Voice recording attached. Transcription is not available in this build, so type what was said.' : 'Private to you. Nothing is saved until you confirm.'}</T>
-            <Pressable accessibilityRole="button" accessibilityLabel={listening || recState.isRecording ? 'Stop recording' : 'Record or dictate'} onPress={toggleVoice} hitSlop={8} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
-              {listening || recState.isRecording ? <Square size={20} strokeWidth={1.75} color={colors.nearbyInk} /> : <Mic size={20} strokeWidth={1.75} color={colors.action} />}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <BText variant="caption" color="inkSoft" style={{ flex: 1 }}>{voiceHint}</BText>
+            <Pressable accessibilityRole="button" accessibilityLabel={listening || recState.isRecording ? 'Stop recording' : 'Record or dictate'} onPress={toggleVoice} hitSlop={8} style={{ width: sizes.touch, height: sizes.touch, alignItems: 'center', justifyContent: 'center' }}>
+              {listening || recState.isRecording ? <Square size={sizes.icon} strokeWidth={sizes.iconStroke} color={colors.nearbyInk} /> : <Mic size={sizes.icon} strokeWidth={sizes.iconStroke} color={colors.action} />}
             </Pressable>
           </View>
-        </Card>
-        {error ? <Notice>{error}</Notice> : null}
-        {found ? (
-          <>
-            <View style={{ marginTop: space[2] }}>
-              <T variant="title">Bridge found</T>
-              <T variant="body" color="inkSoft">Uncheck anything that isn&apos;t right. {found.mode === 'llm' ? 'Names and skills were checked by the deterministic extractor first.' : 'Found with keyword rules, not AI.'}</T>
-            </View>
-            <Card padded={false}>
-              {found.people.length === 0 ? <View style={{ padding: space[3] }}><T variant="body">No names found. The note is saved on its own{contactId ? ' and attached to this card' : ''}.</T></View> : null}
-              {found.people.map((p) => {
-                const ch = choices[p.key];
-                const ambiguous = p.resolution === 'ambiguous' || (p.resolution === 'possible_match' && p.candidates.length > 1);
-                return (
-                  <View key={p.key}>
-                    {ambiguous && !ch ? (
-                      <View style={{ padding: space[3], backgroundColor: colors.cautionWash, gap: space[2], borderBottomWidth: 1, borderBottomColor: colors.rule }}>
-                        <T variant="label" style={{ color: colors.cautionInk }}>Which {p.mention}?</T>
-                        <TagRow>
-                          {p.candidates.map((c) => <Tag key={c.contactId} label={c.displayName} onPress={() => setChoices((x) => ({ ...x, [p.key]: { contactId: c.contactId, name: c.displayName } }))} />)}
-                          <Tag label="New person" state="suggested" onPress={() => setChoices((x) => ({ ...x, [p.key]: { contactId: null, name: p.mention } }))} />
-                        </TagRow>
-                      </View>
-                    ) : (
-                      <CheckRow checked={!!ch} onToggle={() => setChoices((x) => ({ ...x, [p.key]: x[p.key] ? null : ambiguous ? null : { contactId: p.candidates[0]?.contactId ?? null, name: p.candidates[0]?.displayName ?? p.mention } }))} title={ch?.name ?? p.mention}
-                        subtitle={ch?.contactId ? 'Matches your card. Add the note there.' : 'New card'} />
-                    )}
-                    {p.tags.length ? (
-                      <CheckRow checked={p.tags.some((t) => tagOn[`${p.key}:${t.tag}`])} onToggle={() => { const any = p.tags.some((t) => tagOn[`${p.key}:${t.tag}`]); setTagOn((x) => { const y = { ...x }; for (const t of p.tags) y[`${p.key}:${t.tag}`] = !any; return y; }); }} title={`Skills and interests for ${ch?.name?.split(' ')[0] ?? p.mention}`} titleVariant="body">
-                        <TagRow>{p.tags.map((t) => <Tag key={t.tag} label={t.tag.replace(/-/g, ' ')} state={tagOn[`${p.key}:${t.tag}`] ? 'stated' : 'suggested'} onPress={() => setTagOn((x) => ({ ...x, [`${p.key}:${t.tag}`]: !x[`${p.key}:${t.tag}`] }))} />)}</TagRow>
-                      </CheckRow>
-                    ) : null}
-                  </View>
-                );
-              })}
-              {found.connections.map((c) => {
-                const k = `${c.fromKey}>${c.toKey}`;
-                const name = (key: string) => choices[key]?.name ?? found.people.find((p) => p.key === key)?.mention ?? key;
-                return <CheckRow key={k} checked={!!edgeOn[k]} onToggle={() => setEdgeOn((x) => ({ ...x, [k]: !x[k] }))} title={`${name(c.fromKey)} ${c.kind === 'works_with' ? 'works with' : 'knows'} ${name(c.toKey)}`} titleVariant="body" subtitle="From your note. Marked unconfirmed until one of them says so.">
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}><RouteGlyph kind="intro" /><T variant="caption" color="inkSoft">“{c.phrase}”</T></View>
-                </CheckRow>;
-              })}
-            </Card>
-            {found.ownerGoals.length ? <Card><Flag label="About you" /><T variant="body">Goals mentioned: {found.ownerGoals.join('; ')}. Add them from your profile if you want them on your card.</T></Card> : null}
-            <View style={{ borderRadius: radius.card }} />
-          </>
-        ) : null}
-        {Platform.OS !== 'web' && !found ? <T variant="caption" color="inkSoft">Tip: the keyboard microphone dictates straight into the note.</T> : null}
-      </Screen>
-    </>
+        </View>
+        {Platform.OS !== 'web' && !found ? <BText variant="caption" color="inkFaint">Tip: the keyboard microphone dictates straight into the note.</BText> : null}
+      </Section>
+      {error ? <Notice tone="dangerInk">{error}</Notice> : null}
+      {found ? (
+        <>
+          <Section label="People">
+            {found.people.length === 0 ? <EmptyRow title={`No names found. The note is saved on its own${contactId ? ' and attached to this card' : ''}.`} /> : (
+              <Stack>
+                {found.people.map((p) => {
+                  const ch = choices[p.key];
+                  const ambiguous = p.resolution === 'ambiguous' || (p.resolution === 'possible_match' && p.candidates.length > 1);
+                  const tagsOn = p.tags.some((t) => tagOn[`${p.key}:${t.tag}`]);
+                  return (
+                    <Group key={p.key}>
+                      {ambiguous && !ch ? (
+                        <View style={{ padding: layout.rowPadH, backgroundColor: colors.cautionWash, gap: space[2] }}>
+                          <BText variant="label" color="cautionInk">Which {p.mention}?</BText>
+                          <TagList>
+                            {p.candidates.map((c) => <Tag key={c.contactId} label={c.displayName} onPress={() => setChoices((x) => ({ ...x, [p.key]: { contactId: c.contactId, name: c.displayName } }))} />)}
+                            <Tag label="New person" variant="suggested" onPress={() => setChoices((x) => ({ ...x, [p.key]: { contactId: null, name: p.mention } }))} />
+                          </TagList>
+                        </View>
+                      ) : (
+                        <Row title={ch?.name ?? p.mention} titleVariant="rowName" subtitle={ch?.contactId ? 'Matches your card. Add the note there.' : 'New card'} trailing={<Toggle value={!!ch} accessibilityLabel={`Save ${p.mention}`} onValueChange={() => setChoices((x) => ({ ...x, [p.key]: x[p.key] ? null : ambiguous ? null : { contactId: p.candidates[0]?.contactId ?? null, name: p.candidates[0]?.displayName ?? p.mention } }))} />} />
+                      )}
+                      {p.tags.length ? (
+                        <View style={{ paddingHorizontal: layout.rowPadH, paddingVertical: layout.rowPadV, gap: space[2] }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space[2] }}>
+                            <BText variant="label" color="inkSoft" style={{ flex: 1 }}>Skills and interests for {(ch?.name ?? p.mention).split(' ')[0]}</BText>
+                            <Toggle value={tagsOn} accessibilityLabel="Save skills and interests" onValueChange={() => setTagOn((x) => { const y = { ...x }; for (const t of p.tags) y[`${p.key}:${t.tag}`] = !tagsOn; return y; })} />
+                          </View>
+                          <TagList>{p.tags.map((t) => <Tag key={t.tag} label={t.tag.replace(/-/g, ' ')} variant={tagOn[`${p.key}:${t.tag}`] ? 'selected' : 'suggested'} onPress={() => setTagOn((x) => ({ ...x, [`${p.key}:${t.tag}`]: !x[`${p.key}:${t.tag}`] }))} />)}</TagList>
+                        </View>
+                      ) : null}
+                    </Group>
+                  );
+                })}
+              </Stack>
+            )}
+          </Section>
+          {found.connections.length ? (
+            <Section label="Who knows whom">
+              <Group dashed>
+                {found.connections.map((c) => {
+                  const k = `${c.fromKey}>${c.toKey}`;
+                  const name = (key: string) => choices[key]?.name ?? found.people.find((p) => p.key === key)?.mention ?? key;
+                  return <Row key={k} title={<RouteLine kind="suggested" label={`${name(c.fromKey)} ${c.kind === 'works_with' ? 'works with' : 'knows'} ${name(c.toKey)}`} />} subtitle={`“${c.phrase}” · Unconfirmed until one of them says so.`} trailing={<Toggle value={!!edgeOn[k]} accessibilityLabel="Save this link" onValueChange={() => setEdgeOn((x) => ({ ...x, [k]: !x[k] }))} />} />;
+                })}
+              </Group>
+            </Section>
+          ) : null}
+          {found.ownerGoals.length ? <Section label="About you"><EmptyRow title={`Goals mentioned: ${found.ownerGoals.join('; ')}. Add them from your profile if you want them on your card.`} /></Section> : null}
+        </>
+      ) : null}
+    </Screen>
   );
 }
 

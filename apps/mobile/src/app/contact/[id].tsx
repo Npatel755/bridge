@@ -1,9 +1,9 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { View } from 'react-native';
+import { Linking, View } from 'react-native';
 
-import { Button, Card, CardSection, EntryCard, EvidenceQuote, Field, Loading, Notice, RouteLine, Row, Screen, Sheet, T, Tag, TagRow, TopBar } from '@/components';
-import { useTheme } from '@/constants/theme';
+import { BText, Button, EmptyRow, Evidence, Field, Group, PersonCard, Row, RouteLine, Screen, ScreenHeader, Section, Tag, TagList, useTheme } from '@/bridge-design-system';
+import { Back, Loading, Notice, Stack, shortDate, surnameInitial } from '@/components/shared';
 import { useAsync } from '@/hooks/use-async';
 import { errorMessage } from '@/lib/api';
 import { sourceLabel } from '@/lib/contacts-data';
@@ -33,8 +33,8 @@ export default function ContactDetail() {
   }, [id]);
   const reload = d.reload;
   useFocusEffect(useCallback(() => { reload(); }, [reload]));
-  if (d.loading && !d.data) return <><TopBar onBack={() => router.back()} /><Screen><Loading /></Screen></>;
-  if (d.error || !d.data) return <><TopBar onBack={() => router.back()} /><Screen><Notice>{d.error ?? 'This card could not be found.'}</Notice></Screen></>;
+  if (d.loading && !d.data) return <Screen><ScreenHeader left={<Back />} title="Card" /><Loading /></Screen>;
+  if (d.error || !d.data) return <Screen><ScreenHeader left={<Back />} title="Card" /><Notice tone="dangerInk">{d.error ?? 'This card could not be found.'}</Notice></Screen>;
   const { c, claims, ev, notes, edges, rem, drafts } = d.data;
   const route = contactRoute(c.relationship, c.relationship_status);
   const setClaim = async (cid: string, status: 'confirmed' | 'rejected') => { const { error: e } = await supabase.from('contact_claims').update({ status }).eq('id', cid); if (e) setError(errorMessage(e)); else reload(); };
@@ -42,88 +42,85 @@ export default function ContactDetail() {
   const byKind = (k: string[]) => claims.filter((x) => k.includes(x.kind));
   const evidenceFor = (evidenceId: string | null) => ev.find((e) => e.id === evidenceId);
 
+  const suggested = byKind(['skill', 'tool', 'interest', 'goal', 'offer']).filter((x) => x.status === 'suggested');
+  const more = byKind(['interest', 'goal', 'offer', 'org', 'role', 'project']);
   return (
-    <>
-      <TopBar onBack={() => router.back()} title="Card" right={<Button variant="ghost" size="sm" title="Edit" onPress={() => router.push({ pathname: '/contact/edit', params: { id } })} />} />
-      <Screen>
-        <EntryCard name={c.name} role={[c.headline, c.company || c.school, c.location].filter(Boolean).join(', ')} route={route} stacked>
-          <CardSection>
-            <T variant="body" color="inkSoft">{[RELATIONSHIP_LABEL[c.relationship] ?? c.relationship, c.how_met, c.met_at ? `met ${new Date(c.met_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}` : null].filter(Boolean).join(' · ')}{c.relationship_status === 'suggested' ? ' · relationship not confirmed' : ''}</T>
-            {c.relationship_status === 'suggested' ? <Row><Button size="sm" title="Confirm I know them" onPress={async () => { await supabase.from('contacts').update({ relationship_status: 'confirmed' }).eq('id', id); reload(); }} /></Row> : null}
-            <TagRow>{byKind(['skill', 'tool']).map((x) => <Tag key={x.id} label={x.label} state={x.status === 'confirmed' ? 'stated' : 'suggested'} />)}</TagRow>
-            <Row wrap>
-              <Button variant="primary" size="sm" title="Draft an ask" onPress={() => router.push({ pathname: '/draft', params: { contactId: id } })} />
-              <Button size="sm" title="Add a note" onPress={() => router.push({ pathname: '/note/new', params: { contactId: id } })} />
-              {c.email ? <Button size="sm" title="Email" onPress={() => import('react-native').then(({ Linking }) => Linking.openURL(`mailto:${c.email}`))} /> : null}
-            </Row>
-          </CardSection>
-        </EntryCard>
-        <T variant="caption" color="inkSoft">Private to you. Source labels show where each fact came from.</T>
-        {error ? <Notice>{error}</Notice> : null}
+    <Screen>
+      <ScreenHeader left={<Back />} right={<Button variant="ghost" size="sm" label="Edit" onPress={() => router.push({ pathname: '/contact/edit', params: { id } })} />} title="Card" subtitle="Private to you. Source labels show where each fact came from." />
+      <Section label="Who they are">
+        <PersonCard name={c.name} role={[c.headline, c.company || c.school, c.location].filter(Boolean).join(', ') || 'No headline yet'} tab={surnameInitial(c.name)} tabTone="highlight" route={route}>
+          <BText variant="secondary" color="inkSoft">{[RELATIONSHIP_LABEL[c.relationship] ?? c.relationship, c.how_met, c.met_at ? `met ${shortDate(c.met_at)}` : null].filter(Boolean).join(' · ')}{c.relationship_status === 'suggested' ? ' · relationship not confirmed' : ''}</BText>
+          {c.relationship_status === 'suggested' ? <Button size="sm" label="Confirm I know them" onPress={async () => { await supabase.from('contacts').update({ relationship_status: 'confirmed' }).eq('id', id); reload(); }} /> : null}
+          {byKind(['skill', 'tool']).length ? <TagList>{byKind(['skill', 'tool']).map((x) => <Tag key={x.id} label={x.label} variant={x.status === 'confirmed' ? 'stated' : 'suggested'} />)}</TagList> : null}
+          <Button variant="primary" size="sm" label="Draft an ask" onPress={() => router.push({ pathname: '/draft', params: { contactId: id } })} />
+          <Button size="sm" label="Add a note" onPress={() => router.push({ pathname: '/note/new', params: { contactId: id } })} />
+          {c.email ? <Button size="sm" variant="ghost" label="Email" onPress={() => Linking.openURL(`mailto:${c.email}`)} /> : null}
+        </PersonCard>
+      </Section>
+      {error ? <Notice tone="dangerInk">{error}</Notice> : null}
 
-        {byKind(['skill', 'tool', 'interest', 'goal', 'offer']).some((x) => x.status === 'suggested') ? (
-          <Card>
-            <T variant="name">Suggested, not confirmed</T>
-            {byKind(['skill', 'tool', 'interest', 'goal', 'offer']).filter((x) => x.status === 'suggested').map((x) => (
-              <Row key={x.id} between>
-                <View style={{ flex: 1 }}><Tag label={x.label} state="suggested" /><T variant="caption" color="inkSoft">{x.kind} · {sourceLabel(evidenceFor(x.evidence_id)?.source ?? 'extracted')}</T></View>
-                <Row><Button variant="ghost" size="sm" title="Confirm" onPress={() => setClaim(x.id, 'confirmed')} /><Button variant="ghost" size="sm" title="Not right" onPress={() => setClaim(x.id, 'rejected')} /></Row>
-              </Row>
+      {suggested.length ? (
+        <Section label="Suggested, not confirmed">
+          <Group dashed>
+            {suggested.map((x) => (
+              <Row key={x.id} title={x.label} titleVariant="label" subtitle={`${x.kind} · ${sourceLabel(evidenceFor(x.evidence_id)?.source ?? 'extracted')}`} trailing={<View style={{ flexDirection: 'row', gap: space[1] }}><Button variant="ghost" size="sm" label="Confirm" onPress={() => setClaim(x.id, 'confirmed')} /><Button variant="ghost" size="sm" label="No" onPress={() => setClaim(x.id, 'rejected')} /></View>} />
             ))}
-          </Card>
-        ) : null}
+          </Group>
+        </Section>
+      ) : null}
 
-        <T variant="title" style={{ marginTop: space[2] }}>Evidence</T>
-        {ev.length === 0 ? <Card dashed><T variant="body">No receipts yet. Add a note about how you met or what they are good at.</T></Card> : ev.map((e) => (
-          <Card key={e.id}>
-            <EvidenceQuote quote={e.excerpt} source={sourceLabel(e.source)} date={e.observed_at} unconfirmed={e.source === 'ai_suggested'} marks={claims.filter((x) => x.evidence_id === e.id).map((x) => x.label).slice(0, 3)} />
-          </Card>
-        ))}
+      <Section label="Evidence">
+        {ev.length === 0 ? <EmptyRow title="No receipts yet. Add a note about how you met or what they are good at." actionLabel="Add a note" onPress={() => router.push({ pathname: '/note/new', params: { contactId: id } })} /> : (
+          <Stack>{ev.map((e) => <Evidence key={e.id} quote={e.excerpt} marks={claims.filter((x) => x.evidence_id === e.id).map((x) => x.label).slice(0, 3)} source={`${sourceLabel(e.source)}, ${shortDate(e.observed_at)} · private to you`} stale={e.source === 'ai_suggested'} />)}</Stack>
+        )}
+      </Section>
 
-        {byKind(['interest', 'goal', 'offer', 'org', 'role', 'project']).length ? (
-          <>
-            <T variant="title" style={{ marginTop: space[2] }}>Interests, goals, and more</T>
-            <TagRow>{byKind(['interest', 'goal', 'offer', 'org', 'role', 'project']).map((x) => <Tag key={x.id} label={`${x.kind === 'goal' ? 'Wants: ' : x.kind === 'offer' ? 'Offers: ' : ''}${x.label}`} state={x.status === 'confirmed' ? 'stated' : 'suggested'} />)}</TagRow>
-          </>
-        ) : null}
+      {more.length ? (
+        <Section label="Interests, goals, and more">
+          <TagList>{more.map((x) => <Tag key={x.id} label={`${x.kind === 'goal' ? 'Wants: ' : x.kind === 'offer' ? 'Offers: ' : ''}${x.label}`} variant={x.status === 'confirmed' ? 'stated' : 'suggested'} />)}</TagList>
+        </Section>
+      ) : null}
 
-        <T variant="title" style={{ marginTop: space[2] }}>Who they know</T>
-        {edges.length === 0 ? <T variant="caption" color="inkSoft">No recorded links to other cards. Shared school or company alone is not a relationship.</T> : edges.map((e) => {
-          const other = e.from_contact_id === id ? e.to : e.from;
-          const otherId = e.from_contact_id === id ? e.to_contact_id : e.from_contact_id;
-          return (
-            <Card key={e.id}>
-              <Row between>
-                <View style={{ flex: 1 }}>
-                  <RouteLine kind={e.status === 'confirmed' && e.kind !== 'follows' && e.kind !== 'followed_by' ? 'intro' : 'suggested'} label={`${e.kind.replace(/_/g, ' ')} ${other?.name ?? 'you'}${e.status === 'suggested' ? ', unconfirmed' : ''}`} />
-                  {e.note ? <T variant="caption" color="inkSoft">{e.note}</T> : null}
-                </View>
-                {e.status === 'suggested' ? <Row><Button variant="ghost" size="sm" title="Confirm" onPress={() => setEdge(e.id, 'confirmed')} /><Button variant="ghost" size="sm" title="Remove" onPress={() => setEdge(e.id, 'rejected')} /></Row> : otherId ? <Button variant="ghost" size="sm" title="Open" onPress={() => router.push({ pathname: '/contact/[id]', params: { id: otherId } })} /> : null}
-              </Row>
-            </Card>
-          );
-        })}
+      <Section label="How you know them">
+        {edges.length === 0 ? <EmptyRow title="No recorded links to other cards. Shared school or company alone is not a relationship." /> : (
+          <Group>
+            {edges.map((e) => {
+              const other = e.from_contact_id === id ? e.to : e.from;
+              const otherId = e.from_contact_id === id ? e.to_contact_id : e.from_contact_id;
+              const kind = e.status === 'confirmed' && e.kind !== 'follows' && e.kind !== 'followed_by' ? 'intro' : 'suggested';
+              return (
+                <Row key={e.id} title={<RouteLine kind={kind} label={`${e.kind.replace(/_/g, ' ')} ${other?.name ?? 'you'}${e.status === 'suggested' ? ', unconfirmed' : ''}`} />} subtitle={e.note ?? undefined}
+                  onPress={otherId && e.status !== 'suggested' ? () => router.push({ pathname: '/contact/[id]', params: { id: otherId } }) : undefined} chevron={!!otherId && e.status !== 'suggested'}
+                  trailing={e.status === 'suggested' ? <View style={{ flexDirection: 'row', gap: space[1] }}><Button variant="ghost" size="sm" label="Confirm" onPress={() => setEdge(e.id, 'confirmed')} /><Button variant="ghost" size="sm" label="Remove" onPress={() => setEdge(e.id, 'rejected')} /></View> : undefined} />
+              );
+            })}
+          </Group>
+        )}
+      </Section>
 
-        <T variant="title" style={{ marginTop: space[2] }}>Notes</T>
-        {notes.length === 0 ? <Card dashed><T variant="body">No notes yet.</T><Button size="sm" title="Capture a note" onPress={() => router.push({ pathname: '/note/new', params: { contactId: id } })} style={{ alignSelf: 'flex-start' }} /></Card> : notes.map((n) => (
-          <Card key={n.id}><T variant="note">{n.body}</T><T variant="caption" color="inkSoft">{new Date(n.created_at).toLocaleDateString()} · {n.captured_via} · extraction {n.extraction_status}</T></Card>
-        ))}
+      <Section label="Notes">
+        {notes.length === 0 ? <EmptyRow title="No notes yet." actionLabel="Capture a note" onPress={() => router.push({ pathname: '/note/new', params: { contactId: id } })} /> : (
+          <Group>{notes.map((n) => <Row key={n.id} title={n.body} titleVariant="note" subtitle={`${shortDate(n.created_at)} · ${n.captured_via} · extraction ${n.extraction_status}`} />)}</Group>
+        )}
+      </Section>
 
-        <T variant="title" style={{ marginTop: space[2] }}>Follow-ups</T>
-        {rem.filter((r) => !r.done_at).map((r) => <Row key={r.id} between><T variant="body">{r.title} · {new Date(r.due_at).toLocaleDateString()}</T><Button variant="ghost" size="sm" title="Done" onPress={async () => { await supabase.from('reminders').update({ done_at: new Date().toISOString() }).eq('id', r.id); reload(); }} /></Row>)}
-        <Row>
-          <View style={{ flex: 1 }}><Field placeholder="Remind me to…" value={reminder} onChangeText={setReminder} /></View>
-          <Button size="sm" title="In a week" disabled={!reminder.trim()} onPress={async () => { try { const { error } = await supabase.from('reminders').insert({ owner_id: session?.user.id, contact_id: id, title: reminder.trim(), due_at: new Date(Date.now() + 7 * 86_400_000).toISOString() }); if (error) throw error; setReminder(''); reload(); } catch (e) { setError(errorMessage(e)); } }} />
-        </Row>
+      <Section label="Follow-ups">
+        <Stack>
+          {rem.filter((r) => !r.done_at).length ? <Group>{rem.filter((r) => !r.done_at).map((r) => <Row key={r.id} title={r.title} titleVariant="label" subtitle={`Due ${shortDate(r.due_at)}`} trailing={<Button variant="ghost" size="sm" label="Done" onPress={async () => { await supabase.from('reminders').update({ done_at: new Date().toISOString() }).eq('id', r.id); reload(); }} />} />)}</Group> : null}
+          <Field label="Follow-up" placeholder="Remind me to…" value={reminder} onChangeText={setReminder} accessibilityLabel="New reminder" />
+          <Button size="sm" fullWidth label="Remind me in a week" disabled={!reminder.trim()} onPress={async () => { try { const { error: e } = await supabase.from('reminders').insert({ owner_id: session?.user.id, contact_id: id, title: reminder.trim(), due_at: new Date(Date.now() + 7 * 86_400_000).toISOString() }); if (e) throw e; setReminder(''); reload(); } catch (e) { setError(errorMessage(e)); } }} />
+        </Stack>
+      </Section>
 
-        {drafts.length ? <><T variant="title" style={{ marginTop: space[2] }}>Drafts</T>{drafts.map((dr) => <Card key={dr.id}><T variant="label">{dr.subject}</T><T variant="caption" color="inkSoft">{dr.status} · {new Date(dr.created_at).toLocaleDateString()}</T></Card>)}</> : null}
+      {drafts.length ? <Section label="Drafts"><Group>{drafts.map((dr) => <Row key={dr.id} title={dr.subject} titleVariant="label" subtitle={`${dr.status} · ${shortDate(dr.created_at)}`} />)}</Group></Section> : null}
 
-        <Button variant="danger" title="Archive this card" onPress={() => setConfirmArchive(true)} style={{ marginTop: space[4] }} />
-        <Sheet visible={confirmArchive} onClose={() => setConfirmArchive(false)} title={`Archive ${c.name}?`}>
-          <T variant="body" color="inkSoft">The card leaves your stack and search results. Notes stay. You can restore it from Settings.</T>
-          <Button variant="danger" title="Archive" onPress={async () => { await supabase.from('contacts').update({ archived: true }).eq('id', id); setConfirmArchive(false); router.back(); }} />
-        </Sheet>
-      </Screen>
-    </>
+      <Section label="Archive">
+        <Stack>
+          <BText variant="secondary" color="inkSoft">The card leaves your file and search results. Notes stay. You can restore it from Settings.</BText>
+          {confirmArchive ? <Button variant="danger" size="sm" fullWidth label={`Yes, archive ${c.name}`} onPress={async () => { await supabase.from('contacts').update({ archived: true }).eq('id', id); setConfirmArchive(false); router.back(); }} /> : null}
+          <Button variant={confirmArchive ? 'ghost' : 'secondary'} size="sm" fullWidth label={confirmArchive ? 'Keep the card' : 'Archive this card'} onPress={() => setConfirmArchive(!confirmArchive)} />
+        </Stack>
+      </Section>
+    </Screen>
   );
 }

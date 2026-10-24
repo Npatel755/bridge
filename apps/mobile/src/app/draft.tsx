@@ -2,10 +2,10 @@ import { draftOutreach } from '@bridge/core';
 import * as Clipboard from 'expo-clipboard';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Linking, Platform, View } from 'react-native';
+import { Linking, Platform } from 'react-native';
 
-import { Button, Card, Field, Flag, Loading, Notice, Row, Screen, ScreenTitle, Segmented, TopBar } from '@/components';
-import { useTheme } from '@/constants/theme';
+import { Button, Field, Group, Row, Screen, ScreenHeader, Section, Tag, TagList } from '@/bridge-design-system';
+import { Loading, Notice, Stack } from '@/components/shared';
 import { errorMessage } from '@/lib/api';
 import { RELATIONSHIP_LABEL } from '@/lib/relationship';
 import { useSession } from '@/lib/session';
@@ -14,7 +14,6 @@ import { supabase } from '@/lib/supabase';
 interface D { contactId: string; name: string; email: string | null; subject: string; body: string; context: string }
 
 export default function Draft() {
-  const { space } = useTheme();
   const p = useLocalSearchParams<{ contactId: string; ask?: string; via?: string; intro?: string }>();
   const { profile, session } = useSession();
   const [drafts, setDrafts] = useState<D[]>([]);
@@ -53,28 +52,29 @@ export default function Draft() {
   async function openSms() { if (!d) return; await record('sent_manually'); Linking.openURL(`sms:${Platform.OS === 'ios' ? '&' : '?'}body=${encodeURIComponent(d.body)}`); }
 
   return (
-    <>
-      <TopBar left={<Button variant="ghost" size="sm" title="Close" onPress={() => router.back()} />} title="Draft" />
-      <Screen cta={d ? <Button variant="primary" size="lg" title="Copy message" onPress={copy} /> : undefined}>
-        <Flag label="Bridge never sends anything for you" />
-        <ScreenTitle title={d ? `To ${d.name}` : 'Draft'} caption={d ? `Grounded in what you recorded: ${d.context || 'your card for them'}. Edit anything before you send it yourself.` : ''} />
-        {error ? <Notice>{error}</Notice> : null}
-        {!d && !error ? <Loading /> : null}
-        {drafts.length > 1 ? <Segmented options={drafts.map((x, k) => ({ key: String(k), label: x.name.split(' ')[0] }))} value={String(i)} onChange={(k) => setI(Number(k))} /> : null}
-        {d ? (
-          <Card>
-            <Field label="Subject" value={d.subject} onChangeText={(v) => update({ subject: v })} />
-            <Field label="Message" value={d.body} onChangeText={(v) => update({ body: v })} multiline style={{ minHeight: 220, fontFamily: 'Literata_400Regular', lineHeight: 24 }} />
-            {status ? <Notice tone="confirm">{status}</Notice> : null}
-            <Row wrap>
-              <Button size="sm" title={d.email ? 'Open in Mail' : 'Open in Mail (no email on card)'} onPress={openMail} />
-              {Platform.OS !== 'web' ? <Button size="sm" title="Open in Messages" onPress={openSms} /> : null}
-              <Button variant="ghost" size="sm" title="Save as draft" onPress={async () => { await record('draft'); setStatus('Saved to the card.'); }} />
-            </Row>
-          </Card>
-        ) : null}
-        <View style={{ height: space[2] }} />
-      </Screen>
-    </>
+    <Screen footer={d ? <Button variant="primary" size="sm" fullWidth label="Copy message" onPress={copy} /> : undefined}>
+      <ScreenHeader left={<Button variant="ghost" size="sm" label="Close" onPress={() => router.back()} />} title={d ? `To ${d.name}` : 'Draft'} subtitle={d ? `Grounded in what you recorded: ${d.context || 'your card for them'}. Edit anything before you send it yourself. Bridge never sends anything for you.` : 'Bridge never sends anything for you.'} />
+      {error ? <Notice tone="dangerInk">{error}</Notice> : null}
+      {!d && !error ? <Loading /> : null}
+      {drafts.length > 1 ? <Section label="Drafts"><TagList>{drafts.map((x, k) => <Tag key={x.contactId} label={x.name.split(' ')[0]} variant={k === i ? 'selected' : 'stated'} onPress={() => setI(k)} />)}</TagList></Section> : null}
+      {d ? (
+        <>
+          <Section label="Your message">
+            <Stack>
+              <Field label="Subject" value={d.subject} onChangeText={(v) => update({ subject: v })} />
+              <Field label="Message" value={d.body} onChangeText={(v) => update({ body: v })} multiline />
+              {status ? <Notice tone="confirmInk">{status}</Notice> : null}
+            </Stack>
+          </Section>
+          <Section label="Send it yourself">
+            <Group>
+              <Row title={d.email ? 'Open in Mail' : 'Open in Mail (no email on card)'} titleVariant="label" chevron onPress={openMail} />
+              {Platform.OS !== 'web' ? <Row title="Open in Messages" titleVariant="label" chevron onPress={openSms} /> : null}
+              <Row title="Save as draft" titleVariant="label" subtitle="Keeps it on their card." chevron onPress={async () => { await record('draft'); setStatus('Saved to the card.'); }} />
+            </Group>
+          </Section>
+        </>
+      ) : null}
+    </Screen>
   );
 }

@@ -1,10 +1,9 @@
 import { normalizeTag, tagLabel } from '@bridge/core';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { View } from 'react-native';
 
-import { Button, Card, CardSection, EntryCard, Field, Notice, Progress, Row, Screen, T, Tag, TagRow } from '@/components';
-import { useTheme } from '@/constants/theme';
+import { BText, Button, Evidence, Field, Group, PersonCard, ProgressBar, Row, Screen, ScreenHeader, Section, Tag, TagList, useTheme } from '@/bridge-design-system';
+import { Notice, Stack, surnameInitial } from '@/components/shared';
 import { errorMessage } from '@/lib/api';
 import { requestForeground } from '@/lib/nearby';
 import { useSession, type Profile } from '@/lib/session';
@@ -24,7 +23,7 @@ const NETWORKING = ['Coffee chats', 'Intros', 'Events', 'Async only'];
 interface TagRowT { id?: string; kind: string; tag: string; label: string; hint?: string; status: string; discoverable: boolean }
 
 export default function Onboarding() {
-  const { space } = useTheme();
+  useTheme();
   const { edit } = useLocalSearchParams<{ edit?: string }>();
   const { profile, session, refreshProfile } = useSession();
   const [step, setStep] = useState(() => (edit || !profile ? 1 : Math.min(Math.max(profile.onboarding_step || 1, 1), TOTAL)));
@@ -81,86 +80,106 @@ export default function Onboarding() {
   };
 
   return (
-    <Screen cta={<Button variant="primary" size="lg" title={step === TOTAL ? 'Finish' : 'Continue'} loading={busy} onPress={next} />}>
-      <Progress step={step} total={TOTAL} onBack={step > 1 ? () => setStep(step - 1) : edit ? () => router.back() : undefined} onSkip={!profile?.onboarding_complete ? skipAll : undefined} />
-      <T variant="display" accessibilityRole="header">{titles[step][0]}</T>
-      <T variant="body" color="inkSoft">{titles[step][1]}</T>
-      {error ? <Notice>{error}</Notice> : null}
+    <Screen footer={<Button variant="primary" size="sm" fullWidth label={busy ? 'Saving…' : step === TOTAL ? 'Finish' : 'Continue'} disabled={busy} onPress={next} />}>
+      <ScreenHeader left={step > 1 ? <Button variant="ghost" size="sm" label="Back" onPress={() => setStep(step - 1)} /> : edit ? <Button variant="ghost" size="sm" label="Close" onPress={() => router.back()} /> : undefined}
+        right={!profile?.onboarding_complete ? <Button variant="ghost" size="sm" label="Skip for now" onPress={skipAll} /> : undefined}
+        title={titles[step][0]} subtitle={titles[step][1]} accessory={<ProgressBar value={step} max={TOTAL} label={`Step ${step} of ${TOTAL}`} />} />
+      {error ? <Notice tone="dangerInk">{error}</Notice> : null}
 
       {step === 1 ? (
-        <Card>
-          <Field label="Name" value={form.display_name ?? ''} onChangeText={(v) => set('display_name', v)} />
-          <Field label="Role or title" value={form.role_title ?? ''} onChangeText={(v) => set('role_title', v)} placeholder="CS student, embedded engineer…" />
-          <T variant="label" color="inkSoft">Career stage</T>
-          <TagRow>{CAREER.map((c) => <Tag key={c} label={c} state={form.career_stage === c ? 'selected' : 'stated'} onPress={() => set('career_stage', c)} />)}</TagRow>
-          <Field label="Company" value={form.company ?? ''} onChangeText={(v) => set('company', v)} />
-          <Field label="School" value={form.school ?? ''} onChangeText={(v) => set('school', v)} />
-          <Field label="Major or field" value={form.major ?? ''} onChangeText={(v) => set('major', v)} />
-          <Field label="Industry" value={form.industry ?? ''} onChangeText={(v) => set('industry', v)} />
-          <Row><View style={{ flex: 1 }}><Field label="City" value={form.city ?? ''} onChangeText={(v) => set('city', v)} /></View><View style={{ flex: 1 }}><Field label="Region" value={form.region ?? ''} onChangeText={(v) => set('region', v)} /></View></Row>
-          <Field label="Short bio" value={form.bio ?? ''} onChangeText={(v) => set('bio', v)} multiline placeholder="What you are building or learning right now" />
-        </Card>
+        <>
+          <Section label="About you">
+            <Stack>
+              <Field label="Name" value={form.display_name ?? ''} onChangeText={(v) => set('display_name', v)} />
+              <Field label="Role or title" value={form.role_title ?? ''} onChangeText={(v) => set('role_title', v)} placeholder="CS student, embedded engineer…" />
+              <Field label="Short bio" value={form.bio ?? ''} onChangeText={(v) => set('bio', v)} multiline placeholder="What you are building or learning right now" />
+            </Stack>
+          </Section>
+          <Section label="Career stage"><TagList>{CAREER.map((c) => <Tag key={c} label={c} variant={form.career_stage === c ? 'selected' : 'stated'} onPress={() => set('career_stage', c)} />)}</TagList></Section>
+          <Section label="Where">
+            <Stack>
+              <Field label="Company" value={form.company ?? ''} onChangeText={(v) => set('company', v)} />
+              <Field label="School" value={form.school ?? ''} onChangeText={(v) => set('school', v)} />
+              <Field label="Major or field" value={form.major ?? ''} onChangeText={(v) => set('major', v)} />
+              <Field label="Industry" value={form.industry ?? ''} onChangeText={(v) => set('industry', v)} />
+              <Field label="City" value={form.city ?? ''} onChangeText={(v) => set('city', v)} />
+              <Field label="Region" value={form.region ?? ''} onChangeText={(v) => set('region', v)} />
+            </Stack>
+          </Section>
+        </>
       ) : null}
 
       {step === 2 ? (
         <>
-          <Field placeholder="Search skills or add your own" value={custom} onChangeText={setCustom} onSubmitEditing={() => { if (custom.trim()) { toggleTag('skill', custom); setCustom(''); } }} returnKeyType="done" />
-          <T variant="label" color="inkSoft">On your card</T>
-          <TagRow>
-            {tags.filter((t) => t.kind === 'skill' || t.kind === 'tool').map((t) => <Tag key={t.kind + t.tag} label={t.label} hint={t.hint ?? 'Working'} state="selected" onPress={() => cycleLevel(t.kind, t.tag)} accessibilityLabel={`${t.label}, ${t.hint ?? 'Working'}. Tap to change level, long press to remove`} />)}
-            {tags.filter((t) => t.kind === 'skill').length === 0 ? <T variant="caption" color="inkSoft">Nothing yet. Tap a suggestion or type your own.</T> : null}
-          </TagRow>
-          {tags.filter((t) => t.kind === 'skill').length ? <Button variant="ghost" size="sm" title="Remove last" onPress={() => setTags((ts) => { const i = ts.map((t) => t.kind).lastIndexOf('skill'); return i < 0 ? ts : ts.filter((_, j) => j !== i); })} style={{ alignSelf: 'flex-start' }} /> : null}
-          <T variant="label" color="inkSoft">{form.school ? `Common at ${form.school}` : 'Common skills'}</T>
-          <TagRow>{COMMON_SKILLS.filter((s) => !has('skill', s) && (!custom || s.toLowerCase().includes(custom.toLowerCase()))).map((s) => <Tag key={s} label={s} onPress={() => toggleTag('skill', s)} />)}{custom.trim() && !has('skill', custom) ? <Tag label={`+ Add “${custom.trim()}”`} state="suggested" onPress={() => { toggleTag('skill', custom); setCustom(''); }} /> : null}</TagRow>
-          <T variant="label" color="inkSoft" style={{ marginTop: space[2] }}>How your card looks to others</T>
-          <EntryCard name={form.display_name || 'You'} role={[form.role_title, form.company || form.school].filter(Boolean).join(', ') || 'Add a role'}>
-            <CardSection>{form.bio ? <T variant="note">{form.bio}</T> : null}<TagRow>{shown.map((t) => <Tag key={t.kind + t.tag} label={t.label} />)}</TagRow></CardSection>
-          </EntryCard>
-          <T variant="caption" color="inkSoft">Your email and private notes are never on your card.</T>
+          <Section label="Search or add a skill">
+            <Field label="Skill" placeholder="Search skills or add your own" value={custom} onChangeText={setCustom} onSubmitEditing={() => { if (custom.trim()) { toggleTag('skill', custom); setCustom(''); } }} returnKeyType="done" accessibilityLabel="Search skills or add your own" />
+          </Section>
+          <Section label="On your card" action={tags.filter((t) => t.kind === 'skill').length ? <Button variant="ghost" size="sm" label="Remove last" onPress={() => setTags((ts) => { const i = ts.map((t) => t.kind).lastIndexOf('skill'); return i < 0 ? ts : ts.filter((_, j) => j !== i); })} /> : undefined}>
+            <TagList>
+              {tags.filter((t) => t.kind === 'skill' || t.kind === 'tool').map((t) => <Tag key={t.kind + t.tag} label={`${t.label} · ${t.hint ?? 'Working'}`} variant="selected" onPress={() => cycleLevel(t.kind, t.tag)} onRemove={() => toggleTag(t.kind, t.label)} />)}
+            </TagList>
+            {tags.filter((t) => t.kind === 'skill').length === 0 ? <BText variant="secondary" color="inkSoft">Nothing yet. Tap a suggestion or type your own.</BText> : null}
+          </Section>
+          <Section label={form.school ? `Common at ${form.school}` : 'Common skills'}>
+            <TagList>{COMMON_SKILLS.filter((s) => !has('skill', s) && (!custom || s.toLowerCase().includes(custom.toLowerCase()))).map((s) => <Tag key={s} label={s} onPress={() => toggleTag('skill', s)} />)}{custom.trim() && !has('skill', custom) ? <Tag label={`+ Add “${custom.trim()}”`} variant="suggested" onPress={() => { toggleTag('skill', custom); setCustom(''); }} /> : null}</TagList>
+          </Section>
+          <Section label="How your card looks to others">
+            <PersonCard name={form.display_name || 'You'} role={[form.role_title, form.company || form.school].filter(Boolean).join(', ') || 'Add a role'} tab={surnameInitial(form.display_name || 'You')} tabTone="card">
+              {form.bio ? <Evidence quote={form.bio} marks={[]} source="Your bio" /> : null}
+              {shown.length ? <TagList>{shown.map((t) => <Tag key={t.kind + t.tag} label={t.label} />)}</TagList> : null}
+              <BText variant="caption" color="inkFaint">Your email and private notes are never on your card.</BText>
+            </PersonCard>
+          </Section>
         </>
       ) : null}
 
       {step === 3 ? (
         <>
-          <T variant="label" color="inkSoft">Interests</T>
-          <TagRow>{[...new Set([...COMMON_INTERESTS, ...tags.filter((t) => t.kind === 'interest').map((t) => t.label)])].map((s) => <Tag key={s} label={s} state={has('interest', s) ? 'selected' : 'stated'} onPress={() => toggleTag('interest', s)} />)}</TagRow>
-          <Field placeholder="Add an interest" value={custom} onChangeText={setCustom} onSubmitEditing={() => { if (custom.trim()) { toggleTag('interest', custom); setCustom(''); } }} returnKeyType="done" />
-          <T variant="label" color="inkSoft" style={{ marginTop: space[2] }}>Goals</T>
-          <TagRow>{COMMON_GOALS.map((s) => <Tag key={s} label={s} state={has('goal', s) ? 'selected' : 'stated'} onPress={() => toggleTag('goal', s)} />)}</TagRow>
-          <T variant="label" color="inkSoft" style={{ marginTop: space[2] }}>What you can offer</T>
-          <TagRow>{COMMON_OFFERS.map((s) => <Tag key={s} label={s} state={has('offer', s) ? 'selected' : 'stated'} onPress={() => toggleTag('offer', s)} />)}</TagRow>
+          <Section label="Interests">
+            <Stack>
+              <TagList>{[...new Set([...COMMON_INTERESTS, ...tags.filter((t) => t.kind === 'interest').map((t) => t.label)])].map((s) => <Tag key={s} label={s} variant={has('interest', s) ? 'selected' : 'stated'} onPress={() => toggleTag('interest', s)} />)}</TagList>
+              <Field label="Interest" placeholder="Add an interest" value={custom} onChangeText={setCustom} onSubmitEditing={() => { if (custom.trim()) { toggleTag('interest', custom); setCustom(''); } }} returnKeyType="done" accessibilityLabel="Add an interest" />
+            </Stack>
+          </Section>
+          <Section label="Goals"><TagList>{COMMON_GOALS.map((s) => <Tag key={s} label={s} variant={has('goal', s) ? 'selected' : 'stated'} onPress={() => toggleTag('goal', s)} />)}</TagList></Section>
+          <Section label="What you can offer"><TagList>{COMMON_OFFERS.map((s) => <Tag key={s} label={s} variant={has('offer', s) ? 'selected' : 'stated'} onPress={() => toggleTag('offer', s)} />)}</TagList></Section>
         </>
       ) : null}
 
       {step === 4 ? (
-        <Card>
-          <T variant="label" color="inkSoft">Open to</T>
-          <TagRow>{COLLAB.map((c) => <Tag key={c} label={c} state={asList(form.collaboration_prefs).includes(c) ? 'selected' : 'stated'} onPress={() => toggleList('collaboration_prefs', c)} />)}</TagRow>
-          <Field label="Working style" value={form.working_style ?? ''} onChangeText={(v) => set('working_style', v)} placeholder="Evenings and weekends, async first…" />
-          <Field label="Availability" value={form.availability ?? ''} onChangeText={(v) => set('availability', v)} placeholder="A few hours a week" />
-          <Field label="Preferred contact" value={form.contact_method ?? ''} onChangeText={(v) => set('contact_method', v)} placeholder="Email, Signal, LinkedIn message" />
-          <Field label="Languages" value={langText} onChangeText={(v) => { setLangText(v); set('languages', v.split(',').map((s) => s.trim()).filter(Boolean)); }} placeholder="English, Spanish" />
-          <T variant="label" color="inkSoft">Networking</T>
-          <TagRow>{NETWORKING.map((c) => <Tag key={c} label={c} state={asList(form.networking_prefs).includes(c) ? 'selected' : 'stated'} onPress={() => toggleList('networking_prefs', c)} />)}</TagRow>
-        </Card>
+        <>
+          <Section label="Open to"><TagList>{COLLAB.map((c) => <Tag key={c} label={c} variant={asList(form.collaboration_prefs).includes(c) ? 'selected' : 'stated'} onPress={() => toggleList('collaboration_prefs', c)} />)}</TagList></Section>
+          <Section label="How you work">
+            <Stack>
+              <Field label="Working style" value={form.working_style ?? ''} onChangeText={(v) => set('working_style', v)} placeholder="Evenings and weekends, async first…" />
+              <Field label="Availability" value={form.availability ?? ''} onChangeText={(v) => set('availability', v)} placeholder="A few hours a week" />
+              <Field label="Preferred contact" value={form.contact_method ?? ''} onChangeText={(v) => set('contact_method', v)} placeholder="Email, Signal, LinkedIn message" />
+              <Field label="Languages" value={langText} onChangeText={(v) => { setLangText(v); set('languages', v.split(',').map((s) => s.trim()).filter(Boolean)); }} placeholder="English, Spanish" />
+            </Stack>
+          </Section>
+          <Section label="Networking"><TagList>{NETWORKING.map((c) => <Tag key={c} label={c} variant={asList(form.networking_prefs).includes(c) ? 'selected' : 'stated'} onPress={() => toggleList('networking_prefs', c)} />)}</TagList></Section>
+        </>
       ) : null}
 
       {step === 5 ? (
-        <View style={{ gap: space[2] }}>
-          <Card><T variant="name">LinkedIn export</T><T variant="body" color="inkSoft">Upload the Connections.csv LinkedIn gives you. Export importer, not a live connection.</T><Button size="sm" title="Import a LinkedIn export" onPress={() => { save(step); router.push('/plugins/linkedin-export'); }} style={{ alignSelf: 'flex-start' }} /></Card>
-          <Card><T variant="name">CSV file</T><T variant="body" color="inkSoft">Any spreadsheet with names. You map the columns and review duplicates first.</T><Button size="sm" title="Import a CSV" onPress={() => { save(step); router.push('/import/csv'); }} style={{ alignSelf: 'flex-start' }} /></Card>
-          <Card><T variant="name">Phone contacts</T><T variant="body" color="inkSoft">Pick the people you want. Nothing is uploaded until you choose them.</T><Button size="sm" title="Choose phone contacts" onPress={() => { save(step); router.push('/import/phone'); }} style={{ alignSelf: 'flex-start' }} /></Card>
-        </View>
+        <Section label="Sources, all private to you">
+          <Group>
+            <Row title="LinkedIn export" titleVariant="label" subtitle="Upload the Connections.csv LinkedIn gives you. Export importer, not a live connection." chevron onPress={() => { save(step); router.push('/plugins/linkedin-export'); }} />
+            <Row title="CSV file" titleVariant="label" subtitle="Any spreadsheet with names. You map the columns and review duplicates first." chevron onPress={() => { save(step); router.push('/import/csv'); }} />
+            <Row title="Phone contacts" titleVariant="label" subtitle="Pick the people you want. Nothing is uploaded until you choose them." chevron onPress={() => { save(step); router.push('/import/phone'); }} />
+          </Group>
+        </Section>
       ) : null}
 
       {step === 6 ? (
-        <Card>
-          <T variant="body">Bridge asks for location only while Nearby is on. Exact coordinates stay on the server and are removed when you turn it off. Other people only ever see a coarse band like “within ~100 m”.</T>
-          {nearbyMsg ? <Notice tone="plain">{nearbyMsg}</Notice> : null}
-          <Button title="Allow location while using the app" onPress={async () => { const c = await requestForeground(); setNearbyMsg(c === 'denied' ? 'Location is off. You can turn Nearby on later from the Nearby tab.' : c === 'unsupported' ? 'This device cannot share location.' : 'Location allowed. Turn Nearby on from the Nearby tab whenever you like.'); }} />
-          <T variant="caption" color="inkSoft">You can skip this. Nearby stays off until you turn it on.</T>
-        </Card>
+        <Section label="Nearby">
+          <Stack>
+            <BText variant="body">Bridge asks for location only while Nearby is on. Exact coordinates stay on the server and are removed when you turn it off. Other people only ever see a coarse band like “within ~100 m”.</BText>
+            {nearbyMsg ? <Notice tone="confirmInk">{nearbyMsg}</Notice> : null}
+            <Button size="sm" fullWidth label="Allow location while using the app" onPress={async () => { const c = await requestForeground(); setNearbyMsg(c === 'denied' ? 'Location is off. You can turn Nearby on later from the Nearby tab.' : c === 'unsupported' ? 'This device cannot share location.' : 'Location allowed. Turn Nearby on from the Nearby tab whenever you want.'); }} />
+            <BText variant="caption" color="inkFaint">You can skip this. Nearby stays off until you turn it on.</BText>
+          </Stack>
+        </Section>
       ) : null}
     </Screen>
   );
