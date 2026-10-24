@@ -11,3 +11,4 @@ export * from './csv.ts';
 export * from './nearby.ts';
 export * from './outreach.ts';
 export * from './embed.ts';
+export * from './db-map.ts';
