@@ -11,7 +11,7 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
-    "test:db": "node --test --experimental-strip-types supabase/tests/*.test.ts",
+    "test:db": "node --test supabase/tests/integration.test.mjs",
     "sync:functions": "node scripts/sync-functions-shared.mjs",
     "check:functions": "node scripts/sync-functions-shared.mjs --check",
     "plugin:test": "npm run --workspace @bridge/plugin-sdk cli -- test",

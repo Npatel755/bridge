@@ -1,0 +1,90 @@
+{
+  "version": "5",
+  "specifiers": {
+    "jsr:@supabase/supabase-js@2": "2.118.0"
+  },
+  "jsr": {
+    "@supabase/supabase-js@2.118.0": {
+      "integrity": "42009f9d5b35997f35bba560d509f42608057cae647bd5a25b9b4a06ec3ffad0"
+    }
+  },
+  "workspace": {
+    "packageJson": {
+      "dependencies": [
+        "npm:typescript@~6.0.3"
+      ]
+    },
+    "members": {
+      "apps/mobile": {
+        "packageJson": {
+          "dependencies": [
+            "npm:@expo-google-fonts/inter-tight@~0.4.2",
+            "npm:@expo-google-fonts/literata@~0.4.3",
+            "npm:@expo/ui@~58.0.23",
+            "npm:@supabase/supabase-js@^2.118.0",
+            "npm:@types/react@19.3",
+            "npm:eslint-config-expo@~58.0.4",
+            "npm:eslint@9",
+            "npm:expo-audio@~58.0.10",
+            "npm:expo-clipboard@~58.0.4",
+            "npm:expo-constants@~58.0.13",
+            "npm:expo-contacts@~58.0.9",
+            "npm:expo-device@~58.0.5",
+            "npm:expo-document-picker@~58.0.4",
+            "npm:expo-file-system@~58.0.11",
+            "npm:expo-font@~58.0.10",
+            "npm:expo-glass-effect@~58.0.5",
+            "npm:expo-haptics@~58.0.7",
+            "npm:expo-image@~58.0.17",
+            "npm:expo-linking@~58.0.14",
+            "npm:expo-location@~58.0.19",
+            "npm:expo-notifications@~58.1.6",
+            "npm:expo-router@~58.0.26",
+            "npm:expo-splash-screen@~58.0.11",
+            "npm:expo-sqlite@~58.0.14",
+            "npm:expo-status-bar@~58.0.4",
+            "npm:expo-symbols@~58.0.4",
+            "npm:expo-system-ui@~58.0.6",
+            "npm:expo-task-manager@~58.0.12",
+            "npm:expo-web-browser@~58.0.6",
+            "npm:expo@~58.0.19",
+            "npm:lucide-react-native@^1.61.0",
+            "npm:react-dom@19.3.0",
+            "npm:react-native-gesture-handler@3.3",
+            "npm:react-native-reanimated@4.7.1",
+            "npm:react-native-safe-area-context@~5.10.1",
+            "npm:react-native-screens@4.30",
+            "npm:react-native-svg@15.16.0",
+            "npm:react-native-web@~0.21.4",
+            "npm:react-native-worklets@0.13.0",
+            "npm:react-native@0.88.0",
+            "npm:react@19.3.0",
+            "npm:typescript@~6.0.3"
+          ]
+        }
+      },
+      "packages/core": {
+        "packageJson": {
+          "dependencies": [
+            "npm:vitest@^3.2.4"
+          ]
+        }
+      },
+      "packages/plugin-sdk": {
+        "packageJson": {
+          "dependencies": [
+            "npm:typescript@^5.9.3",
+            "npm:vitest@^3.2.4"
+          ]
+        }
+      },
+      "plugins/linkedin-export": {
+        "packageJson": {
+          "dependencies": [
+            "npm:vitest@^3.2.4"
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,2 @@
+{ "name": "@bridge/plugin-community-example", "version": "1.0.0", "private": true, "type": "module",
+  "scripts": { "start": "node server.mjs", "test": "node ../../packages/plugin-sdk/bin/test-runner.mjs --manifest manifest.json --fixtures fixtures" } }

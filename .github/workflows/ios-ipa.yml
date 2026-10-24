@@ -37,15 +37,37 @@ jobs:
       - name: Generate the iOS project
         working-directory: apps/mobile
         run: npx expo prebuild --platform ios --clean
+      - name: Select Xcode
+        run: |
+          latest=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          sudo xcode-select -s "$latest"
+          xcodebuild -version
+      - name: Resolve Swift packages
+        working-directory: apps/mobile
+        run: |
+          mkdir -p build
+          xcodebuild -resolvePackageDependencies -workspace ios/Bridge.xcworkspace -scheme Bridge \
+            -clonedSourcePackagesDirPath "$PWD/build/SourcePackages" -skipPackagePluginValidation -skipMacroValidation 2>&1 | tail -40
       - name: Archive without code signing
         working-directory: apps/mobile
         run: |
-          set -o pipefail
+          set +e
+          mkdir -p build
           xcodebuild -workspace ios/Bridge.xcworkspace -scheme Bridge -configuration Release -sdk iphoneos \
             -archivePath "$PWD/build/Bridge.xcarchive" archive \
+            -clonedSourcePackagesDirPath "$PWD/build/SourcePackages" -skipPackagePluginValidation -skipMacroValidation \
             CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO DEVELOPMENT_TEAM="" \
-            | xcbeautify --renderer github-actions || true
-          test -d build/Bridge.xcarchive/Products/Applications/Bridge.app
+            > build/xcodebuild.log 2>&1
+          status=$?
+          grep -nE "error:|BUILD FAILED|ARCHIVE FAILED|ARCHIVE SUCCEEDED" build/xcodebuild.log | grep -v "warning:" | head -60 || true
+          exit $status
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-log
+          path: apps/mobile/build/xcodebuild.log
+          if-no-files-found: ignore
       - name: Package IPA
         working-directory: apps/mobile
         run: |

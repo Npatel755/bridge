@@ -31,7 +31,7 @@ describe('CSV import', () => {
     ]);
     expect(dups.find((d) => d.rowIndex === 1)).toMatchObject({ existingId: 'p1', kind: 'email', strength: 'strong' });
     expect(dups.find((d) => d.rowIndex === 0)).toMatchObject({ existingId: 'm-other', kind: 'name_only', strength: 'weak' });
-    expect(dups.find((d) => d.rowIndex === 2)).toMatchObject({ kind: 'name_only' });
+    expect(dups.find((d) => d.rowIndex === 2)).toMatchObject({ otherRowIndex: 0, kind: 'profile_url', strength: 'strong' });
   });
 
   it('drops invalid emails and non-http urls', () => {

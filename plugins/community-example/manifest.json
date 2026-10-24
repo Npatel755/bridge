@@ -1,0 +1,5 @@
+{"id":"community-example","name":"Example community connector (fixtures)","version":"1.0.0","author":"Bridge community",
+ "description":"Reference connector running as an isolated HTTP service. Returns fixture people plus follower/following edges to show how Bridge labels them.",
+ "auth":{"type":"none"},"capabilities":["import.people","import.edges"],"relationshipTypes":["follower","following","mutual_connection"],
+ "service":{"url":"http://host.docker.internal:8787","allowedHosts":["host.docker.internal","127.0.0.1"]},
+ "limits":{"maxRecords":500,"maxBytes":1000000,"timeoutMs":8000}}
