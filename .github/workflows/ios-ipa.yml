@@ -1,0 +1,60 @@
+name: iOS IPA (unsigned, for sideloading)
+
+on:
+  workflow_dispatch:
+    inputs:
+      supabase_url:
+        description: Hosted Supabase project URL baked into the app (EXPO_PUBLIC_SUPABASE_URL)
+        required: true
+        default: http://127.0.0.1:54321
+      supabase_anon_key:
+        description: Supabase anon (publishable) key baked into the app (EXPO_PUBLIC_SUPABASE_ANON_KEY)
+        required: true
+      google_auth:
+        description: Show the Google sign-in button (provider must be configured in Supabase)
+        required: false
+        default: "false"
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Bake client configuration
+        working-directory: apps/mobile
+        run: |
+          cat > .env <<ENV
+          EXPO_PUBLIC_SUPABASE_URL=${{ inputs.supabase_url }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY=${{ inputs.supabase_anon_key }}
+          EXPO_PUBLIC_GOOGLE_AUTH_ENABLED=${{ inputs.google_auth }}
+          ENV
+      - name: Generate the iOS project
+        working-directory: apps/mobile
+        run: npx expo prebuild --platform ios --clean
+      - name: Archive without code signing
+        working-directory: apps/mobile
+        run: |
+          set -o pipefail
+          xcodebuild -workspace ios/Bridge.xcworkspace -scheme Bridge -configuration Release -sdk iphoneos \
+            -archivePath "$PWD/build/Bridge.xcarchive" archive \
+            CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO DEVELOPMENT_TEAM="" \
+            | xcbeautify --renderer github-actions || true
+          test -d build/Bridge.xcarchive/Products/Applications/Bridge.app
+      - name: Package IPA
+        working-directory: apps/mobile
+        run: |
+          rm -rf build/Payload && mkdir -p build/Payload
+          cp -R build/Bridge.xcarchive/Products/Applications/Bridge.app build/Payload/
+          (cd build && zip -qry Bridge-unsigned.ipa Payload)
+          ls -la build/Bridge-unsigned.ipa
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Bridge-unsigned-ipa
+          path: apps/mobile/build/Bridge-unsigned.ipa
+          if-no-files-found: error
