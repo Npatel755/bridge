@@ -20,7 +20,7 @@ export default function Settings() {
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const blocks = useAsync(async () => (await supabase.from('blocks').select('blocked_id, created_at, p:profiles!blocks_blocked_id_fkey(display_name)')).data ?? []);
+  const blocks = useAsync(async () => { const { data, error } = await supabase.rpc('blocked_people'); if (error) throw error; return (data ?? []) as { blocked_id: string; display_name: string; created_at: string }[]; });
   const archived = useAsync(async () => (await supabase.from('contacts').select('id, name').eq('archived', true)).data ?? []);
   const personas = useAsync(async () => (profile?.is_demo ? ((await supabase.rpc('demo_persona_report')).data as Persona[] | null) ?? [] : []), [profile?.is_demo]);
 
@@ -73,7 +73,7 @@ export default function Settings() {
 
         <T variant="title" style={{ marginTop: space[2] }}>Blocked people</T>
         {blocks.data?.length ? blocks.data.map((b) => (
-          <Row key={b.blocked_id} between><T variant="body">{(b as unknown as { p: { display_name: string } | null }).p?.display_name ?? 'Someone'}</T><Button variant="ghost" size="sm" title="Unblock" onPress={async () => { await supabase.from('blocks').delete().eq('blocked_id', b.blocked_id); blocks.reload(); }} /></Row>
+          <Row key={b.blocked_id} between><T variant="body">{b.display_name}</T><Button variant="ghost" size="sm" title="Unblock" onPress={async () => { await supabase.from('blocks').delete().eq('blocked_id', b.blocked_id); blocks.reload(); }} /></Row>
         )) : <T variant="caption" color="inkSoft">No one blocked. Blocking stops Nearby matches and intro requests both ways.</T>}
 
         <T variant="title" style={{ marginTop: space[2] }}>Archived cards</T>
