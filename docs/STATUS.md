@@ -21,6 +21,7 @@
 - **LinkedIn:** only the export importer works end to end. "Sign in with LinkedIn" verification is scaffolded server-side and disabled without credentials. No scraping.
 - **Google sign-in** requires provider configuration; hidden otherwise. Web redirects in-page; native opens the system auth sheet (`expo-web-browser`) and completes the exchange from the `bridge://` redirect. Neither path was exercised without provider credentials.
 - **Password recovery** sends a link that lands on `/reset-password` (web origin or `bridge://` on native); the new-password screen was verified on web only.
+- **Auth config is local-dev grade.** `supabase/config.toml` keeps email confirmation off so the demo and tests run without a mail step; passwords need 8+ characters and a password change requires a recent sign-in. Before `supabase config push` to a hosted project, turn on `enable_confirmations`, set `password_requirements`, raise `max_frequency`, and point `site_url`/`additional_redirect_urls` at the production app.
 - **Export on native** copies JSON to the clipboard (no file-sharing module added); web downloads a file.
 - Demo contacts and nearby personas are fictional. The web preview runs the same code via react-native-web, so native tab-bar and modal behaviors differ slightly.
 

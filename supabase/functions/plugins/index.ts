@@ -109,7 +109,8 @@ async function run(ctx: Ctx, pluginId: string, op: 'preview' | 'import', body: B
     const v = validateResponse(raw, pluginId, limits.maxRecords);
     if (!v.ok) throw new HttpError(502, v.error ?? 'connector failed');
     const people = v.records!.filter((r): r is ImportedPerson => r.kind === 'person');
-    const edges = v.records!.filter((r): r is ImportedEdge => r.kind === 'edge');
+    // Owner↔person edges are recorded on the contact row itself, so only person↔person links are previewed, counted and persisted.
+    const edges = v.records!.filter((r): r is ImportedEdge => r.kind === 'edge' && r.fromProviderId !== null);
     // host-enforced semantics: connectors cannot assert personal/colleague relationships as confirmed
     for (const p of people) if (p.relationship === 'personal' || p.relationship === 'colleague') { p.confidence = Math.min(p.confidence, 0.5); (p as ImportedPerson & { needsReview?: boolean }).needsReview = true; }
     const { data: existing } = await ctx.db.from('contacts').select('id, name, email, company, links').eq('archived', false);

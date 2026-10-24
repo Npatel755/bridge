@@ -18,9 +18,13 @@
       "apps/mobile": {
         "packageJson": {
           "dependencies": [
+            "npm:@expo-google-fonts/inter-tight@~0.4.2",
+            "npm:@expo-google-fonts/literata@~0.4.3",
             "npm:@expo/ui@~58.0.23",
             "npm:@supabase/supabase-js@^2.118.0",
             "npm:@types/react@19.3",
+            "npm:eslint-config-expo@~58.0.4",
+            "npm:eslint@9",
             "npm:expo-audio@~58.0.10",
             "npm:expo-clipboard@~58.0.4",
             "npm:expo-constants@~58.0.13",
@@ -44,6 +48,7 @@
             "npm:expo-task-manager@~58.0.12",
             "npm:expo-web-browser@~58.0.6",
             "npm:expo@~58.0.19",
+            "npm:lucide-react-native@^1.61.0",
             "npm:react-dom@19.3.0",
             "npm:react-native-gesture-handler@3.3",
             "npm:react-native-reanimated@4.7.1",

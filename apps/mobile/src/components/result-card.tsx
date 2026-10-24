@@ -18,11 +18,12 @@ export function bestCitation(rec: Recommendation): Citation | undefined {
   return [...pool].sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))[0];
 }
 
-const isFollower = (rec: Recommendation) => /follow/i.test(rec.howYouKnow);
+const isFollowing = (rec: Recommendation) => /you follow/i.test(rec.howYouKnow);
+const isFollower = (rec: Recommendation) => /follow/i.test(rec.howYouKnow) && !isFollowing(rec);
 
 export function ResultCard({ rec, ask, expanded, stacked, tabOffset, onPress, showNotes = true, goalTerms = [] }: { rec: Recommendation; ask?: string; expanded: boolean; stacked?: boolean; tabOffset?: number; onPress?: () => void; showNotes?: boolean; goalTerms?: string[] }) {
   const { space } = useTheme();
-  const route = routeInfo(rec.route, { follower: isFollower(rec) });
+  const route = routeInfo(rec.route, { follower: isFollower(rec), following: isFollowing(rec) });
   const cite = bestCitation(rec);
   const stale = cite ? staleness(cite.date) : null;
   const roleText = rec.headline || rec.howYouKnow;

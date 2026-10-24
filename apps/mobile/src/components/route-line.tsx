@@ -9,13 +9,14 @@ export type RouteKind = keyof typeof routeStyle;
 export interface RouteInfo { kind: RouteKind; label: string }
 
 /** Map a grounded core Route into the three visual route kinds. Followers and unconfirmed links are never warm routes. */
-export function routeInfo(route: Route, opts?: { follower?: boolean; long?: boolean }): RouteInfo {
+export function routeInfo(route: Route, opts?: { follower?: boolean; following?: boolean; long?: boolean }): RouteInfo {
   if (route.type === 'direct') return { kind: 'direct', label: 'Direct' };
   if (route.type === 'introduction' && route.path) {
     const via = route.path.hops[1]?.name ?? 'a contact';
     if (!route.path.confirmed) return { kind: 'suggested', label: `Via ${via.split(' ')[0]}, unconfirmed` };
     return { kind: 'intro', label: opts?.long ? `Via ${via}, possible intro` : `Via ${via.split(' ')[0]}` };
   }
+  if (opts?.following) return { kind: 'suggested', label: 'You follow them, not a warm intro' };
   return { kind: 'suggested', label: opts?.follower ? 'Follows you, not a warm intro' : 'Unconfirmed' };
 }
 

@@ -38,11 +38,11 @@ export function isStale(iso: string | null | undefined, now: Date): boolean {
 export function evidenceQuality(evidence: Evidence): number {
   if (evidence.status === 'rejected') return 0;
   const statusFactor = evidence.status === 'suggested' ? 0.6 : 1;
-  return SOURCE_WEIGHT[evidence.sourceKind] * statusFactor * clamp01(evidence.confidence);
+  return (SOURCE_WEIGHT[evidence.sourceKind] ?? 0) * statusFactor * clamp01(evidence.confidence);
 }
 
 export function isUncertain(evidence: Evidence): boolean {
-  return evidence.status === 'suggested' || evidence.confidence < 0.6 || evidence.sourceKind === 'ai_suggested';
+  return evidence.status === 'suggested' || !(evidence.confidence >= 0.6) || evidence.sourceKind === 'ai_suggested';
 }
 
 export function formatDate(iso: string | null | undefined): string {
@@ -52,6 +52,7 @@ export function formatDate(iso: string | null | undefined): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** Non-finite input (NaN from bad imports, Infinity) clamps to 0 so it can never inflate a score. */
 export function clamp01(n: number): number {
-  return Math.min(1, Math.max(0, n));
+  return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : 0;
 }
